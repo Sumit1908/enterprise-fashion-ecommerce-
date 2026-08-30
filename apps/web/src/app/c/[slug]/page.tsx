@@ -61,12 +61,13 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   return (
     <div className="container-wide py-10">
       <nav className="text-xs text-[var(--color-ink-soft)]">
-        <Link href="/">Home</Link> / <span>{category.name}</span>
+        <Link href="/" className="hover:text-[var(--color-ink)]">Home</Link> / <span>{category.name}</span>
       </nav>
-      <header className="mt-3 border-b border-[var(--color-sand)] pb-6">
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">{category.name}</h1>
+      <header className="mt-4 border-b border-[var(--color-sand)] pb-8">
+        <p className="eyebrow">Collection</p>
+        <h1 className="mt-3 font-display text-3xl sm:text-4xl">{category.name}</h1>
         {category.description && (
-          <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-ink-soft)]">
             {category.description}
           </p>
         )}

@@ -441,18 +441,20 @@ async function seedDemoProducts() {
   const womenJeans = await prisma.category.findUniqueOrThrow({ where: { slug: 'women-jeans' } });
   const apparelTax = await prisma.taxClass.findUniqueOrThrow({ where: { name: 'Apparel 5%' } });
 
-  // Curated Unsplash denim photography (verified reachable).
+  // Curated Unsplash denim photography — clean detail / on-model / folded shots
+  // only. No store-rack or lifestyle-flatlay imagery, so cards stay consistent.
   const IMG = (id: string, w = 1400) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`;
   const MEN_IMAGES = [
-    IMG('1542272604-787c3835535d'),
-    IMG('1604176354204-9268737828e4'),
-    IMG('1560243563-062bfc001d68'),
+    IMG('1542272604-787c3835535d'), // dark denim, back-pocket detail
+    IMG('1548883354-7622d03aca27'), // moody dark denim detail
+    IMG('1602293589930-45aad59ba3ab'), // light wash, waist detail
+    IMG('1604176354204-9268737828e4'), // folded denim stack
   ];
   const WOMEN_IMAGES = [
-    IMG('1475178626620-a4d074967452'),
-    IMG('1541099649105-f69ad21f3246'),
-    IMG('1598554747436-c9293d6a588f'),
-    IMG('1516762689617-e1cffcef479d'),
+    IMG('1475178626620-a4d074967452'), // light blue, on-model
+    IMG('1598554747436-c9293d6a588f'), // studio, mom-fit
+    IMG('1544022613-e87ca75a784a'), // street style, denim + jacket
+    IMG('1602293589930-45aad59ba3ab'), // light wash, waist detail
   ];
   const rotate = <T,>(arr: T[], by: number) => arr.map((_, i) => arr[(i + by) % arr.length]!);
 

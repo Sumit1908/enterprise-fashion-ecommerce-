@@ -2,66 +2,80 @@ import Link from 'next/link';
 import { api, type CategoryNode } from '@/lib/api';
 import { CartBadge } from '@/components/cart-badge';
 import { MobileNav } from '@/components/mobile-nav';
+import { SiteNav } from '@/components/site-nav';
 
-async function getNav(): Promise<CategoryNode[]> {
+async function getTree(): Promise<CategoryNode[]> {
   try {
-    const tree = await api.categories();
-    return tree.filter((c) => c.showInMenu && !c.parentId).slice(0, 7);
+    return (await api.categories()).filter((c) => !c.parentId && c.showInMenu);
   } catch {
     return [];
   }
 }
 
+const ANNOUNCEMENTS = [
+  'Complimentary shipping on orders over ₹999',
+  'Easy 7-day returns · Cash on Delivery available',
+  'New in: The Autumn Denim Drop',
+];
+
 export async function SiteHeader() {
-  const nav = await getNav();
+  const tree = await getTree();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-sand)] bg-[var(--color-paper)]/95 backdrop-blur">
-      <div className="bg-[var(--color-ink)] text-center text-[11px] tracking-wide text-[var(--color-bone)] sm:text-xs">
-        <p className="truncate px-3 py-2">
-          Free shipping over ₹999 · Easy 7-day returns · COD available
-        </p>
-      </div>
-      <div className="container-wide flex h-16 items-center justify-between gap-3">
-        <div className="flex items-center gap-1 lg:hidden">
-          <MobileNav nav={nav} />
+    <header className="sticky top-0 z-50 bg-[var(--color-paper)]">
+      <div className="overflow-hidden bg-[var(--color-ink)] text-[var(--color-bone)]">
+        <div className="container-wide flex h-9 items-center justify-center">
+          <div className="hide-scrollbar flex gap-10 overflow-x-auto whitespace-nowrap text-[0.68rem] uppercase tracking-[0.18em]">
+            {ANNOUNCEMENTS.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </div>
         </div>
+      </div>
 
-        <Link href="/" className="font-display text-xl font-semibold sm:text-2xl">
-          Slay<span className="text-[var(--color-accent)]">Jeans</span>
-        </Link>
+      <div className="border-b border-[var(--color-sand)] bg-[var(--color-paper)]/95 backdrop-blur">
+        <div className="container-wide relative flex h-[4.25rem] items-center justify-between gap-4">
+          <div className="flex flex-1 items-center lg:hidden">
+            <MobileNav tree={tree} />
+          </div>
 
-        <nav className="hidden items-center gap-7 text-sm font-medium lg:flex">
-          {nav.map((c) => (
-            <Link
-              key={c.id}
-              href={`/c/${c.slug}`}
-              className="text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-ink)]"
-            >
-              {c.name}
+          <Link
+            href="/"
+            className="font-display text-[1.35rem] uppercase tracking-[0.2em] text-[var(--color-ink)] lg:text-[1.5rem]"
+          >
+            Slay&nbsp;Jeans
+          </Link>
+
+          <SiteNav tree={tree} />
+
+          <div className="flex flex-1 items-center justify-end gap-4 text-[var(--color-ink)] sm:gap-5">
+            <Link href="/search" aria-label="Search" className="hover:text-[var(--color-accent)]">
+              <svg viewBox="0 0 24 24" className="h-[1.15rem] w-[1.15rem]" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
             </Link>
-          ))}
-          <Link href="/collections/sale" className="font-semibold text-[var(--color-sale)]">
-            Sale
-          </Link>
-        </nav>
-
-        <div className="flex items-center gap-3 text-sm sm:gap-4">
-          <Link
-            href="/search"
-            aria-label="Search"
-            className="hidden hover:text-[var(--color-accent)] sm:inline"
-          >
-            Search
-          </Link>
-          <Link
-            href="/account/orders"
-            aria-label="Account"
-            className="hidden hover:text-[var(--color-accent)] sm:inline"
-          >
-            Account
-          </Link>
-          <CartBadge />
+            <Link
+              href="/wishlist"
+              aria-label="Wishlist"
+              className="hidden hover:text-[var(--color-accent)] sm:inline"
+            >
+              <svg viewBox="0 0 24 24" className="h-[1.15rem] w-[1.15rem]" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M12 20.5S3.5 14.7 3.5 8.9A4.4 4.4 0 0 1 12 6.9a4.4 4.4 0 0 1 8.5 2c0 5.8-8.5 11.6-8.5 11.6z" />
+              </svg>
+            </Link>
+            <Link
+              href="/account/orders"
+              aria-label="Account"
+              className="hidden hover:text-[var(--color-accent)] sm:inline"
+            >
+              <svg viewBox="0 0 24 24" className="h-[1.15rem] w-[1.15rem]" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <circle cx="12" cy="8" r="3.5" />
+                <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+              </svg>
+            </Link>
+            <CartBadge />
+          </div>
         </div>
       </div>
     </header>

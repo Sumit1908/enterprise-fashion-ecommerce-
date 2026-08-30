@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { api, discountPct, formatPrice, type ProductDetail } from '@/lib/api';
 import { ProductCard } from '@/components/product-card';
 import { AddToCart } from '@/components/add-to-cart';
+import { WishlistButton } from '@/components/wishlist-button';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -91,13 +92,13 @@ export default async function ProductPage({ params }: PageProps) {
         <span className="text-[var(--color-ink)]">{product.name}</span>
       </nav>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-12">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-6 grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
           {gallery.map((m, i) => (
             <div
               key={i}
-              className={`relative overflow-hidden rounded-lg bg-[var(--color-sand)] ${
-                gallery.length > 1 && i === 0 ? 'sm:col-span-2' : ''
+              className={`relative overflow-hidden bg-[var(--color-sand)] ${
+                gallery.length === 1 ? 'sm:col-span-2' : ''
               } aspect-[4/5]`}
             >
               <Image
@@ -105,20 +106,19 @@ export default async function ProductPage({ params }: PageProps) {
                 alt={m.alt ?? product.name}
                 fill
                 priority={i === 0}
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 45vw"
+                className="object-cover object-top"
               />
             </div>
           ))}
         </div>
 
         <div className="lg:sticky lg:top-24 lg:h-fit">
-          {product.brand && (
-            <p className="text-sm uppercase tracking-wide text-[var(--color-ink-soft)]">
-              {product.brand.name}
-            </p>
-          )}
-          <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">{product.name}</h1>
+          {product.brand && <p className="eyebrow">{product.brand.name}</p>}
+          <div className="mt-2 flex items-start justify-between gap-4">
+            <h1 className="font-display text-2xl sm:text-3xl">{product.name}</h1>
+            <WishlistButton slug={product.slug} className="mt-1 shrink-0 border border-[var(--color-sand)]" />
+          </div>
 
           {product.ratingCount > 0 && (
             <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
@@ -136,7 +136,7 @@ export default async function ProductPage({ params }: PageProps) {
                 <span className="text-[var(--color-ink-soft)] line-through">
                   {formatPrice(product.mrp, product.currency)}
                 </span>
-                <span className="rounded bg-[var(--color-sale)]/10 px-2 py-0.5 text-sm font-semibold text-[var(--color-sale)]">
+                <span className="border border-[var(--color-sand)] px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-sale)]">
                   {pct}% off
                 </span>
               </>
@@ -179,8 +179,9 @@ export default async function ProductPage({ params }: PageProps) {
 
       {product.relatedFrom.length > 0 && (
         <section className="mt-20">
-          <h2 className="font-display text-2xl font-semibold">You may also like</h2>
-          <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-4">
+          <p className="eyebrow">Complete the look</p>
+          <h2 className="mt-3 font-display text-2xl sm:text-3xl">You may also like</h2>
+          <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
             {product.relatedFrom.map((r) => (
               <ProductCard key={r.target.id} product={r.target} />
             ))}

@@ -8,6 +8,7 @@ const INFO_PAGES = ['about', 'contact', 'shipping-returns', 'size-guide', 'faq',
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
     { url: base, changeFrequency: 'daily', priority: 1 },
+    { url: `${base}/shop`, changeFrequency: 'daily', priority: 0.9 },
     ...INFO_PAGES.map((slug) => ({
       url: `${base}/pages/${slug}`,
       changeFrequency: 'monthly' as const,

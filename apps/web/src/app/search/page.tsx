@@ -71,7 +71,8 @@ function SearchPage() {
 
   return (
     <div className="container-wide py-10">
-      <h1 className="font-display text-3xl font-semibold">Search</h1>
+      <p className="eyebrow">Find your pair</p>
+      <h1 className="mt-3 font-display text-3xl sm:text-4xl">Search</h1>
 
       <div className="mt-6 max-w-xl">
         <input

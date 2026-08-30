@@ -60,10 +60,11 @@ export default async function CollectionPage({ params, searchParams }: PageProps
         <span className="text-[var(--color-ink)]">{collection.name}</span>
       </nav>
 
-      <header className="mt-3 border-b border-[var(--color-sand)] pb-6">
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">{collection.name}</h1>
+      <header className="mt-4 border-b border-[var(--color-sand)] pb-8">
+        <p className="eyebrow">Collection</p>
+        <h1 className="mt-3 font-display text-3xl sm:text-4xl">{collection.name}</h1>
         {collection.description && (
-          <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-soft)]">{collection.description}</p>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-ink-soft)]">{collection.description}</p>
         )}
       </header>
 

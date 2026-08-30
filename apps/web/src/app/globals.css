@@ -4,14 +4,19 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 
-  --color-ink: #14110f;
-  --color-ink-soft: #4b4640;
-  --color-bone: #f6f3ee;
+  /* Refined luxury palette — ivory, warm black, denim blue, warm gold */
+  --color-ink: #191512;
+  --color-ink-soft: #5f574e;
+  --color-ink-mute: #8c8377;
+  --color-bone: #f6f2ea;
   --color-paper: #ffffff;
-  --color-sand: #e9e2d6;
-  --color-indigo: #2b3a67;
-  --color-accent: #b08543;
-  --color-sale: #a4342b;
+  --color-sand: #e7dfd0;
+  --color-line: #ded4c2;
+  --color-indigo: #2f4058;
+  --color-indigo-deep: #1f2c3e;
+  --color-accent: #a5813f;
+  --color-accent-soft: #c9a86b;
+  --color-sale: #97493b;
 }
 
 :root {
@@ -27,12 +32,23 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
 
 .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  font-weight: 500;
+}
+
+/* Small uppercase label used above section titles */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }
 
 .container-wide {
@@ -53,4 +69,92 @@ body {
 }
 .hide-scrollbar {
   scrollbar-width: none;
+}
+
+/* Buttons -------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 2rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease;
+}
+.btn-primary {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.btn-primary:hover {
+  background: var(--color-indigo);
+}
+.btn-outline {
+  border: 1px solid currentColor;
+}
+.btn-outline:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-color: var(--color-ink);
+}
+.btn-light {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+.btn-light:hover {
+  background: var(--color-accent);
+  color: var(--color-paper);
+}
+
+/* Link with an animated underline ------------------------------------- */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.35s ease;
+}
+.link-underline:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* Scroll reveal ------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }

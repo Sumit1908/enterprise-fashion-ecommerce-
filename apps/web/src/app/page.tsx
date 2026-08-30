@@ -1,91 +1,130 @@
-import Image from 'next/image';
 import Link from 'next/link';
-import { api, type HomeResponse } from '@/lib/api';
-import { HomeSections } from '@/components/home-sections';
+import { api, type HomeResponse, type ProductCard } from '@/lib/api';
+import { Hero } from '@/components/home/hero';
+import { TrustBar } from '@/components/home/trust-bar';
+import { CategoryShowcase } from '@/components/home/category-showcase';
+import { ProductRail } from '@/components/home/product-rail';
+import { EditorialCampaign } from '@/components/home/editorial-campaign';
+import { ShopByFit } from '@/components/home/shop-by-fit';
+import { BrandStory } from '@/components/home/brand-story';
+import { WhySlay } from '@/components/home/why-slay';
+import { Testimonials } from '@/components/home/testimonials';
+import { Newsletter } from '@/components/home/newsletter';
 
 export const revalidate = 30;
 
-async function getHome(): Promise<HomeResponse | null> {
-  try {
-    return await api.home();
-  } catch {
-    return null;
+function sectionByType(home: HomeResponse, type: string) {
+  return home.sections.find((s) => s.type === type);
+}
+
+function take(source: ProductCard[], count: number, exclude = new Set<string>()) {
+  const out: ProductCard[] = [];
+  for (const p of source) {
+    if (out.length >= count) break;
+    if (!exclude.has(p.id) && !out.some((o) => o.id === p.id)) out.push(p);
   }
+  for (const p of source) {
+    if (out.length >= count) break;
+    if (!out.some((o) => o.id === p.id)) out.push(p);
+  }
+  return out;
 }
-
-function Hero({ data }: { data: HomeResponse }) {
-  const hero = data.banners.find((b) => b.placement === 'HOME_HERO');
-  if (!hero) return null;
-  return (
-    <section className="relative flex min-h-[78vh] items-center overflow-hidden sm:min-h-[70vh]">
-      {hero.imageUrl && (
-        <Image
-          src={hero.imageUrl}
-          alt={hero.headline ?? hero.title}
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 sm:bg-gradient-to-r sm:from-black/60 sm:to-transparent" />
-      <div className="container-wide relative z-10 py-16 text-white">
-        <p className="text-xs uppercase tracking-[0.2em] text-white/80 sm:text-sm">{hero.title}</p>
-        <h1 className="mt-3 max-w-xl font-display text-3xl font-semibold leading-[1.1] sm:text-5xl lg:text-6xl">
-          {hero.headline}
-        </h1>
-        {hero.subheadline && (
-          <p className="mt-4 max-w-md text-base text-white/85 sm:text-lg">{hero.subheadline}</p>
-        )}
-        {hero.ctaUrl && (
-          <Link
-            href={hero.ctaUrl}
-            className="mt-7 inline-block rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent)] hover:text-white"
-          >
-            {hero.ctaLabel ?? 'Shop now'}
-          </Link>
-        )}
-      </div>
-    </section>
-  );
-}
-
-const PROMISES: [string, string][] = [
-  ['Free Shipping', 'On orders over ₹999'],
-  ['Easy Returns', '7-day hassle-free returns'],
-  ['Secure Checkout', 'SSL-encrypted & safe'],
-  ['Cash on Delivery', 'Available across India'],
-];
 
 export default async function HomePage() {
-  const data = await getHome();
+  const [home, latest, best] = await Promise.all([
+    api.home().catch(() => null),
+    api.products('sort=latest&pageSize=12').then((r) => r.items).catch(() => [] as ProductCard[]),
+    api.products('sort=bestselling&pageSize=12').then((r) => r.items).catch(() => [] as ProductCard[]),
+  ]);
 
-  if (!data) {
+  if (!home) {
     return (
       <div className="container-wide py-32 text-center">
-        <h1 className="font-display text-3xl font-semibold">Storefront is warming up</h1>
+        <h1 className="font-display text-3xl">Storefront is warming up</h1>
         <p className="mt-3 text-[var(--color-ink-soft)]">
-          The API isn&apos;t reachable yet. Start it with <code>pnpm dev</code> and make sure the
-          database is seeded (<code>pnpm db:seed</code>).
+          The API isn&apos;t reachable yet. Start it with <code>pnpm dev</code> and seed the database
+          with <code>pnpm db:seed</code>.
         </p>
       </div>
     );
   }
 
+  const hero = home.banners.find((b) => b.placement === 'HOME_HERO');
+  const catTiles = sectionByType(home, 'CATEGORY_GRID')?.tiles ?? [];
+  const pool = latest.length ? latest : best;
+
+  const newArrivals = take(
+    [...pool.filter((p) => p.isNewArrival), ...pool],
+    4,
+  );
+  const naIds = new Set(newArrivals.map((p) => p.id));
+  const bestSource = best.length ? best : pool;
+  const bestSellers = take(bestSource, 4, naIds).length >= 3 ? take(bestSource, 4, naIds) : take(bestSource, 4);
+
+  const campaignImage =
+    pool.find((p) => /selvedge|indigo|premium/i.test(p.name))?.media[0]?.url ??
+    pool[0]?.media[0]?.url ??
+    hero?.imageUrl ??
+    null;
+
+  const naSection = sectionByType(home, 'NEW_ARRIVALS');
+  const bsSection = sectionByType(home, 'BEST_SELLERS');
+  const tSection = sectionByType(home, 'TESTIMONIALS');
+  const nSection = sectionByType(home, 'NEWSLETTER');
+
   return (
     <>
-      <Hero data={data} />
-      <section className="border-y border-[var(--color-sand)] bg-[var(--color-paper)]">
-        <div className="container-wide grid grid-cols-2 gap-y-4 py-6 sm:divide-x sm:divide-[var(--color-sand)] sm:py-0 md:grid-cols-4">
-          {PROMISES.map(([title, sub]) => (
-            <div key={title} className="px-3 text-center sm:py-6">
-              <p className="text-xs font-semibold sm:text-sm">{title}</p>
-              <p className="mt-1 text-[11px] text-[var(--color-ink-soft)] sm:text-xs">{sub}</p>
-            </div>
-          ))}
+      {hero ? (
+        <Hero hero={hero} />
+      ) : (
+        <section className="container-wide py-24">
+          <h1 className="font-display text-4xl">Slay Jeans</h1>
+        </section>
+      )}
+
+      <TrustBar />
+
+      <CategoryShowcase tiles={catTiles} />
+
+      <ProductRail
+        eyebrow="Just landed"
+        title={naSection?.title || 'New Arrivals'}
+        description={naSection?.subtitle || 'The latest washes and fits, fresh off the line.'}
+        ctaLabel={naSection?.ctaLabel || 'View all'}
+        ctaHref={naSection?.ctaUrl || '/collections/new-arrivals'}
+        products={newArrivals}
+        priority
+      />
+
+      <EditorialCampaign image={campaignImage} />
+
+      <ProductRail
+        eyebrow="Tried & loved"
+        title={bsSection?.title || 'Best Sellers'}
+        description={bsSection?.subtitle || 'The pairs our clients keep coming back for.'}
+        ctaLabel={bsSection?.ctaLabel || 'Shop all denim'}
+        ctaHref={bsSection?.ctaUrl || '/shop'}
+        products={bestSellers}
+        tone="paper"
+      />
+
+      <ShopByFit pool={pool} />
+
+      <BrandStory />
+
+      <WhySlay />
+
+      <Testimonials items={home.testimonials} title={tSection?.title} />
+
+      <Newsletter title={nSection?.title} />
+
+      {pool.length === 0 && (
+        <div className="container-wide py-12 text-center text-sm text-[var(--color-ink-soft)]">
+          <Link href="/shop" className="link-underline font-semibold">
+            Browse the full catalogue
+          </Link>
         </div>
-      </section>
-      <HomeSections data={data} />
+      )}
     </>
   );
 }
