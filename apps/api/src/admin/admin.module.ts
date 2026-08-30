@@ -20,6 +20,7 @@ import { CatalogAdminController } from './catalog-admin.controller.js';
 import { CatalogAdminService } from './catalog-admin.service.js';
 import { InventoryAdminController } from './inventory-admin.controller.js';
 import { InventoryAdminService } from './inventory-admin.service.js';
+import { HomepageAdminController, HomepageAdminService } from './homepage-admin.controller.js';
 import { OrdersService } from '../orders/orders.service.js';
 import { CurrentUser, type AuthUser } from '../common/decorators.js';
 
@@ -255,7 +256,12 @@ class AdminController {
 
 @Module({
   imports: [AuthModule],
-  controllers: [AdminController, CatalogAdminController, InventoryAdminController],
-  providers: [CatalogAdminService, InventoryAdminService],
+  controllers: [
+    AdminController,
+    CatalogAdminController,
+    InventoryAdminController,
+    HomepageAdminController,
+  ],
+  providers: [CatalogAdminService, InventoryAdminService, HomepageAdminService],
 })
 export class AdminModule {}

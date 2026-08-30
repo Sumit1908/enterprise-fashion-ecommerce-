@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/client';
 import { PageHeader } from '@/components/shell';
-import { Button, Card, Field, Input, Select, Textarea } from '@/components/form';
+import { Button, Card, Field, Input, Textarea } from '@/components/form';
 import { MediaUploader } from '@/components/media-uploader';
 
 type Tab = 'categories' | 'brands' | 'collections';
