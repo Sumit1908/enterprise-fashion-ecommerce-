@@ -28,8 +28,11 @@ Each phase is roughly 2–4 weeks for one full-stack engineer.
   collection CRUD
 - ✅ `AuditLog` interceptor on all admin mutations + `GET /admin/audit`
 - ✅ Admin product editor screen + category/brand/collection manager screen
+- ✅ CSV product import/export — export one row per variant; import upserts by slug,
+  auto-creates brands, resolves categories, per-row error report (`/admin/products/export.csv`,
+  `/admin/products/import` + buttons on the admin Products page)
 - Product editor extras: variant matrix generator (multi-axis), attributes, size guides,
-  related products, CSV import/export
+  related products
 - Category tree drag/drop reorder (API `PATCH /admin/categories/reorder` exists); collection
   rules engine (automated collections)
 - ✅ Inventory: stock levels list (search + low/out filters), manual adjustments with
