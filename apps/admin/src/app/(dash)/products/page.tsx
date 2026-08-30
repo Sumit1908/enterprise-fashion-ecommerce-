@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, money } from '@/lib/client';
 import { DataTable, PageHeader } from '@/components/shell';
+import { CsvTools } from '@/components/csv-tools';
 
 interface Row {
   id: string;
@@ -52,14 +53,17 @@ export default function ProductsPage() {
 
   return (
     <>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader title="Products" subtitle={`${total} products`} />
-        <Link
-          href="/products/new"
-          className="rounded-md bg-[var(--color-brand)] px-4 py-2 text-sm font-medium text-white"
-        >
-          New product
-        </Link>
+        <div className="flex items-start gap-3">
+          <CsvTools onImported={load} />
+          <Link
+            href="/products/new"
+            className="rounded-md bg-[var(--color-brand)] px-4 py-2 text-sm font-medium text-white"
+          >
+            New product
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">

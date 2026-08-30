@@ -110,6 +110,10 @@ export class ProductCreateDto {
 /** Every field optional; only what's sent is changed. */
 export class ProductUpdateDto extends PartialType(ProductCreateDto) {}
 
+export class ImportCsvDto {
+  @IsString() csv!: string;
+}
+
 export class BulkProductActionDto {
   @IsArray() @IsString({ each: true }) ids!: string[];
   @IsIn(['setStatus', 'setFlag', 'clearFlag', 'setSalePrice', 'delete'])

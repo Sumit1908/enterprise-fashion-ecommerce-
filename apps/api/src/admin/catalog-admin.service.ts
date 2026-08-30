@@ -3,9 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ProductStatus } from '@slay/db';
+import { AgeGroup, Gender, Prisma, ProductStatus } from '@slay/db';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { slugify, uniqueSlug } from '../common/slug.js';
+import { parseCsvRecords, toCsv } from '../common/csv.js';
 import type {
   BrandUpsertDto,
   BulkProductActionDto,
@@ -27,6 +28,17 @@ const MERCH_FLAGS = [
   'isExclusive',
 ] as const;
 type MerchFlag = (typeof MERCH_FLAGS)[number];
+
+const GENDER_VALUES = Object.values(Gender);
+const AGE_GROUP_VALUES = Object.values(AgeGroup);
+
+/** Split a "a|b, c" style cell into trimmed, non-empty tokens. */
+function splitList(raw: string | undefined): string[] {
+  return (raw ?? '')
+    .split(/[|,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 const PRODUCT_DETAIL_INCLUDE = {
   brand: { select: { id: true, name: true } },
@@ -679,6 +691,275 @@ export class CatalogAdminService {
     await this.prisma.productCollection.deleteMany({ where: { collectionId: id } });
     await this.prisma.collection.delete({ where: { id } });
     return { id, deleted: true };
+  }
+
+  /* --------------------------------------------------------- CSV import/export */
+
+  private static readonly CSV_HEADERS = [
+    'slug',
+    'name',
+    'status',
+    'brand',
+    'gender',
+    'ageGroup',
+    'mrp',
+    'salePrice',
+    'costPrice',
+    'categories',
+    'tags',
+    'option',
+    'optionValue',
+    'sku',
+    'stock',
+    'shortDescription',
+  ];
+
+  async exportProductsCsv(): Promise<string> {
+    const products = await this.prisma.product.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: 'asc' },
+      include: {
+        brand: { select: { name: true } },
+        categories: { select: { category: { select: { slug: true } } } },
+        tags: { select: { tag: { select: { name: true } } } },
+        options: { select: { name: true } },
+        variants: {
+          include: {
+            optionValues: { select: { optionValue: { select: { value: true } } } },
+            inventory: { select: { onHand: true } },
+          },
+        },
+      },
+    });
+
+    const rows: Array<Record<string, unknown>> = [];
+    for (const p of products) {
+      const shared = {
+        slug: p.slug,
+        name: p.name,
+        status: p.status,
+        brand: p.brand?.name ?? '',
+        gender: p.gender ?? '',
+        ageGroup: p.ageGroup ?? '',
+        mrp: p.mrp,
+        salePrice: p.salePrice,
+        costPrice: p.costPrice ?? '',
+        categories: p.categories.map((c) => c.category.slug).join('|'),
+        tags: p.tags.map((t) => t.tag.name).join('|'),
+        option: p.options[0]?.name ?? '',
+        shortDescription: p.shortDescription ?? '',
+      };
+      if (p.variants.length === 0) {
+        rows.push({ ...shared, optionValue: '', sku: '', stock: '' });
+        continue;
+      }
+      for (const v of p.variants) {
+        rows.push({
+          ...shared,
+          optionValue: v.optionValues.map((o) => o.optionValue.value).join('/'),
+          sku: v.sku,
+          stock: v.inventory.reduce((sum, i) => sum + i.onHand, 0),
+        });
+      }
+    }
+
+    return toCsv(CatalogAdminService.CSV_HEADERS, rows);
+  }
+
+  async importProductsCsv(csv: string) {
+    const records = parseCsvRecords(csv);
+    if (records.length === 0) throw new BadRequestException('CSV has no data rows');
+
+    // Group rows by product (slug, falling back to a slug from the name).
+    const groups = new Map<string, Record<string, string>[]>();
+    records.forEach((r) => {
+      const key = (r.slug || slugify(r.name || '')).trim();
+      if (!key) return;
+      const list = groups.get(key) ?? [];
+      list.push(r);
+      groups.set(key, list);
+    });
+
+    const warehouse = await this.prisma.warehouse.findFirst({
+      orderBy: { priority: 'desc' },
+      select: { id: true },
+    });
+
+    const report = {
+      productsProcessed: 0,
+      created: 0,
+      updated: 0,
+      variantsUpserted: 0,
+      errors: [] as { slug: string; message: string }[],
+    };
+
+    for (const [slug, rows] of groups) {
+      const first = rows[0]!;
+      try {
+        if (!first.name) throw new Error('name is required');
+        const mrp = Number(first.mrp);
+        const salePrice = Number(first.salePrice || first.mrp);
+        if (!Number.isFinite(mrp) || mrp <= 0) throw new Error('mrp must be a positive number');
+        if (salePrice > mrp) throw new Error('salePrice cannot exceed mrp');
+
+        const brandId = first.brand ? await this.resolveBrandId(first.brand) : null;
+        const categoryIds = await this.resolveCategoryIds(first.categories);
+
+        const existing = await this.prisma.product.findFirst({
+          where: { slug },
+          select: { id: true },
+        });
+
+        const scalar = {
+          name: first.name,
+          status: this.parseEnum(first.status, ProductStatus, ProductStatus.DRAFT),
+          gender: this.parseEnum(first.gender, GENDER_VALUES),
+          ageGroup: this.parseEnum(first.ageGroup, AGE_GROUP_VALUES),
+          mrp,
+          salePrice,
+          costPrice: first.costPrice ? Number(first.costPrice) : null,
+          shortDescription: first.shortDescription || null,
+          brandId,
+        };
+
+        const product = existing
+          ? await this.prisma.product.update({ where: { id: existing.id }, data: scalar })
+          : await this.prisma.product.create({
+              data: {
+                ...scalar,
+                slug,
+                publishedAt: scalar.status === ProductStatus.ACTIVE ? new Date() : null,
+              },
+            });
+        existing ? (report.updated += 1) : (report.created += 1);
+        report.productsProcessed += 1;
+
+        // categories
+        await this.prisma.productCategory.deleteMany({ where: { productId: product.id } });
+        if (categoryIds.length) {
+          await this.prisma.productCategory.createMany({
+            data: categoryIds.map((categoryId, i) => ({
+              productId: product.id,
+              categoryId,
+              isPrimary: i === 0,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        // tags
+        await this.prisma.productTag.deleteMany({ where: { productId: product.id } });
+        for (const tagName of splitList(first.tags)) {
+          const tag = await this.prisma.tag.upsert({
+            where: { slug: slugify(tagName) },
+            create: { name: tagName, slug: slugify(tagName) },
+            update: {},
+          });
+          await this.prisma.productTag.create({
+            data: { productId: product.id, tagId: tag.id },
+          });
+        }
+
+        // options + variants — rebuilt from the CSV rows
+        const variantRows = rows
+          .filter((r) => r.sku)
+          .map((r) => ({ sku: r.sku ?? '', optionValue: r.optionValue ?? '', stock: r.stock ?? '' }));
+        await this.prisma.productVariant.deleteMany({ where: { productId: product.id } });
+        await this.prisma.productOption.deleteMany({ where: { productId: product.id } });
+
+        if (variantRows.length) {
+          const optionName = first.option || 'Size';
+          const distinctValues = [
+            ...new Set(variantRows.map((r) => r.optionValue).filter((v) => v !== '')),
+          ];
+          const option = await this.prisma.productOption.create({
+            data: { productId: product.id, name: optionName, position: 0 },
+          });
+          const valueId = new Map<string, string>();
+          for (const [i, value] of distinctValues.entries()) {
+            const created = await this.prisma.productOptionValue.create({
+              data: { optionId: option.id, value, position: i },
+            });
+            valueId.set(value, created.id);
+          }
+
+          for (const [i, vr] of variantRows.entries()) {
+            const variant = await this.prisma.productVariant.create({
+              data: {
+                productId: product.id,
+                sku: vr.sku,
+                position: i,
+                optionValues: vr.optionValue && valueId.has(vr.optionValue)
+                  ? { create: [{ optionValueId: valueId.get(vr.optionValue)! }] }
+                  : undefined,
+              },
+            });
+            report.variantsUpserted += 1;
+            const stock = Number(vr.stock);
+            if (warehouse && Number.isFinite(stock)) {
+              await this.prisma.inventoryLevel.upsert({
+                where: {
+                  variantId_warehouseId: {
+                    variantId: variant.id,
+                    warehouseId: warehouse.id,
+                  },
+                },
+                create: {
+                  variantId: variant.id,
+                  warehouseId: warehouse.id,
+                  onHand: Math.max(0, stock),
+                },
+                update: { onHand: Math.max(0, stock) },
+              });
+            }
+          }
+        }
+      } catch (err) {
+        report.errors.push({ slug, message: (err as Error).message });
+      }
+    }
+
+    return report;
+  }
+
+  private async resolveBrandId(name: string): Promise<string> {
+    const found = await this.prisma.brand.findFirst({
+      where: { OR: [{ name }, { slug: slugify(name) }] },
+      select: { id: true },
+    });
+    if (found) return found.id;
+    const created = await this.prisma.brand.create({
+      data: { name, slug: await uniqueSlug(name, (s) =>
+        this.prisma.brand.findFirst({ where: { slug: s } }).then(Boolean),
+      ) },
+    });
+    return created.id;
+  }
+
+  private async resolveCategoryIds(raw: string | undefined): Promise<string[]> {
+    const wanted = splitList(raw);
+    if (wanted.length === 0) return [];
+    const found = await this.prisma.category.findMany({
+      where: {
+        OR: [
+          { slug: { in: wanted } },
+          { name: { in: wanted } },
+        ],
+      },
+      select: { id: true },
+    });
+    return found.map((c) => c.id);
+  }
+
+  private parseEnum<T extends string>(
+    value: string | undefined,
+    allowed: Record<string, T> | readonly T[],
+    fallback?: T,
+  ): T | undefined {
+    if (!value) return fallback;
+    const upper = value.toUpperCase();
+    const values = Array.isArray(allowed) ? allowed : Object.values(allowed);
+    return (values as readonly string[]).includes(upper) ? (upper as T) : fallback;
   }
 
   private async syncCollectionProducts(collectionId: string, productIds?: string[]): Promise<void> {

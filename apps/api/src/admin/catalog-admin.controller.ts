@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
@@ -21,6 +22,7 @@ import {
   BulkProductActionDto,
   CategoryUpsertDto,
   CollectionUpsertDto,
+  ImportCsvDto,
   ListQueryDto,
   ProductCreateDto,
   ProductUpdateDto,
@@ -41,6 +43,20 @@ export class CatalogAdminController {
   @RequirePermissions('product:read')
   listProducts(@Query() query: ListQueryDto) {
     return this.service.listProducts(query);
+  }
+
+  @Get('products/export.csv')
+  @RequirePermissions('product:read')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="slay-products.csv"')
+  exportCsv() {
+    return this.service.exportProductsCsv();
+  }
+
+  @Post('products/import')
+  @RequirePermissions('product:create')
+  importCsv(@Body() dto: ImportCsvDto) {
+    return this.service.importProductsCsv(dto.csv);
   }
 
   @Get('products/:id')

@@ -5,6 +5,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 import { loadEnv } from '@slay/config';
 import { AppModule } from './app.module.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
@@ -15,6 +16,9 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(cookieParser(env.COOKIE_SECRET));
+  // Bulk CSV imports can be large.
+  app.use(json({ limit: '25mb' }));
+  app.use(urlencoded({ extended: true, limit: '25mb' }));
   app.enableCors({
     origin: env.CORS_ALLOWED_ORIGINS,
     credentials: true,
