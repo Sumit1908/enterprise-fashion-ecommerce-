@@ -15,6 +15,9 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/permissions.guard.js';
 import { RequirePermissions } from '../common/decorators.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AuditInterceptor } from '../common/audit.interceptor.js';
+import { CatalogAdminController } from './catalog-admin.controller.js';
+import { CatalogAdminService } from './catalog-admin.service.js';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -148,6 +151,41 @@ class AdminController {
     return { items, total, page: Number(page), pageSize: take };
   }
 
+  @Get('audit')
+  @RequirePermissions('auditLog:read')
+  async audit(
+    @Query('entityType') entityType?: string,
+    @Query('entityId') entityId?: string,
+    @Query('page') page = '1',
+  ) {
+    const take = 50;
+    const skip = (Math.max(1, Number(page)) - 1) * take;
+    const where: Prisma.AuditLogWhereInput = {
+      ...(entityType ? { entityType } : {}),
+      ...(entityId ? { entityId } : {}),
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        select: {
+          id: true,
+          action: true,
+          entityType: true,
+          entityId: true,
+          summary: true,
+          actorLabel: true,
+          ip: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+    return { items, total, page: Number(page), pageSize: take };
+  }
+
   @Get('customers')
   @RequirePermissions('customer:read')
   async customers(@Query('q') q?: string, @Query('page') page = '1') {
@@ -190,6 +228,7 @@ class AdminController {
 
 @Module({
   imports: [AuthModule],
-  controllers: [AdminController],
+  controllers: [AdminController, CatalogAdminController],
+  providers: [CatalogAdminService, AuditInterceptor],
 })
 export class AdminModule {}
