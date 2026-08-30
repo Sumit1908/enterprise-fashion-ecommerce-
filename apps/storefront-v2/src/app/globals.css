@@ -1,0 +1,247 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: var(--font-inter), 'Helvetica Neue', Arial, ui-sans-serif, system-ui, sans-serif;
+
+  /* SLAY JEANS palette */
+  --color-red: #ef2b2d;
+  --color-red-dark: #8e1115;
+  --color-ink: #111111;
+  --color-navy: #25384a;
+  --color-white: #ffffff;
+  --color-offwhite: #f8f7f5;
+  --color-gray-50: #f1f1f1;
+  --color-border: #e4e4e4;
+  --color-text-muted: #68717a;
+
+  --radius-card: 12px;
+  --radius-img: 14px;
+}
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Layout ------------------------------------------------------------ */
+.container-page {
+  width: 100%;
+  max-width: 1800px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+@media (min-width: 640px) {
+  .container-page {
+    padding-inline: 20px;
+  }
+}
+@media (min-width: 1024px) {
+  .container-page {
+    padding-inline: 40px;
+  }
+}
+
+.section-gap {
+  padding-block: 44px;
+}
+@media (min-width: 1024px) {
+  .section-gap {
+    padding-block: 64px;
+  }
+}
+
+/* Typography ------------------------------------------------------- */
+.h-section {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+@media (min-width: 1024px) {
+  .h-section {
+    font-size: 1.75rem;
+  }
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Pills ---------------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-border);
+  background: var(--color-offwhite);
+  color: var(--color-ink);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.pill:hover {
+  border-color: var(--color-ink);
+}
+.pill--active,
+.pill--sale {
+  background: var(--color-red);
+  border-color: var(--color-red);
+  color: #fff;
+}
+.pill--active:hover,
+.pill--sale:hover {
+  background: var(--color-red-dark);
+  border-color: var(--color-red-dark);
+}
+.pill--soft {
+  background: #fdeff0;
+  border-color: #f6d9da;
+}
+
+/* Buttons ------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-card);
+  padding: 0.85rem 1.6rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition:
+    background-color 0.22s ease,
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+.btn-dark {
+  background: var(--color-ink);
+  color: #fff;
+}
+.btn-dark:hover {
+  background: var(--color-red);
+}
+.btn-red {
+  background: var(--color-red);
+  color: #fff;
+}
+.btn-red:hover {
+  background: var(--color-red-dark);
+}
+.btn-outline {
+  border: 1px solid var(--color-ink);
+  color: var(--color-ink);
+}
+.btn-outline:hover {
+  background: var(--color-ink);
+  color: #fff;
+}
+
+/* Utilities --------------------------------------------------------- */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.edge-fade-r {
+  -webkit-mask-image: linear-gradient(to right, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 88%, transparent 100%);
+}
+
+@keyframes sj-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-pop {
+  animation: sj-pop 0.32s ease;
+}
+
+@keyframes sj-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-up {
+  animation: sj-fade-up 0.25s ease both;
+}
+
+@keyframes sj-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-gray-50);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: sj-shimmer 1.4s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-pop,
+  .animate-fade-up,
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* Real, visible focus states everywhere */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-red);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
