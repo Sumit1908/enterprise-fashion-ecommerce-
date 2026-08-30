@@ -3,9 +3,16 @@ import { api } from '@/lib/api';
 
 const base = process.env.WEB_URL ?? 'http://localhost:3000';
 
+const INFO_PAGES = ['about', 'contact', 'shipping-returns', 'size-guide', 'faq', 'privacy', 'terms'];
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
     { url: base, changeFrequency: 'daily', priority: 1 },
+    ...INFO_PAGES.map((slug) => ({
+      url: `${base}/pages/${slug}`,
+      changeFrequency: 'monthly' as const,
+      priority: 0.3,
+    })),
   ];
 
   try {
@@ -16,6 +23,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     };
     flatten(await api.categories());
+
+    for (const c of await api.collections()) {
+      entries.push({ url: `${base}/collections/${c.slug}`, changeFrequency: 'daily', priority: 0.7 });
+    }
 
     const { items } = await api.products('pageSize=200&sort=latest');
     for (const p of items) {

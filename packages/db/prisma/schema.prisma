@@ -22,7 +22,11 @@
 // =============================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Emit a single SQL statement with LATERAL joins for `include`/`select`
+  // instead of one round-trip per relation. Cuts p95 latency dramatically when
+  // the DB is not on the same host as the API.
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {

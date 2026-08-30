@@ -41,7 +41,27 @@ export class CatalogService {
     };
 
     if (query.category) {
-      where.categories = { some: { category: { slug: query.category } } };
+      // Include the category itself AND everything below it, so a top-level
+      // page like /c/men shows products filed under men/jeans, men/shirts, …
+      const target = await this.prisma.category.findUnique({
+        where: { slug: query.category },
+        select: { id: true, path: true },
+      });
+      const descendantIds = target?.path
+        ? (
+            await this.prisma.category.findMany({
+              where: { OR: [{ path: target.path }, { path: { startsWith: `${target.path}/` } }] },
+              select: { id: true },
+            })
+          ).map((c) => c.id)
+        : [];
+      where.categories = {
+        some: {
+          category: descendantIds.length
+            ? { id: { in: descendantIds } }
+            : { slug: query.category },
+        },
+      };
     }
     if (query.collection) {
       where.collections = { some: { collection: { slug: query.collection } } };
@@ -176,5 +196,23 @@ export class CatalogService {
         isSeasonal: true,
       },
     });
+  }
+
+  async getCollectionBySlug(slug: string) {
+    const collection = await this.prisma.collection.findFirst({
+      where: { slug, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        imageUrl: true,
+        bannerUrl: true,
+        bannerMobileUrl: true,
+        _count: { select: { products: true } },
+      },
+    });
+    if (!collection) throw new NotFoundException('Collection not found');
+    return collection;
   }
 }

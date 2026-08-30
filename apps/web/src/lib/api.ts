@@ -83,6 +83,24 @@ export const api = {
     ),
   product: (slug: string) => get<ProductDetail>(`/products/${slug}`, 30),
   collections: () => get<HomeResponse['collections']>('/collections', 300),
+  collection: (slug: string) =>
+    get<{
+      id: string;
+      name: string;
+      slug: string;
+      description: string | null;
+      imageUrl: string | null;
+      bannerUrl: string | null;
+      bannerMobileUrl: string | null;
+      _count: { products: number };
+    }>(`/collections/${slug}`, 300),
+  search: (q: string) =>
+    get<{
+      term: string;
+      engine: string;
+      suggestions: string[];
+      products: ProductCard[];
+    }>(`/storefront/search?q=${encodeURIComponent(q)}`, 0),
 };
 
 export interface ProductDetail extends ProductCard {

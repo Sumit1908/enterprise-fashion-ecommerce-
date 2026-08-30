@@ -47,6 +47,12 @@ class CatalogController {
   collections() {
     return this.catalog.listCollections();
   }
+
+  @Public()
+  @Get('collections/:slug')
+  collection(@Param('slug') slug: string) {
+    return this.catalog.getCollectionBySlug(slug);
+  }
 }
 
 @Module({

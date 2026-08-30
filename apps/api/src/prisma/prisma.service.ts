@@ -16,14 +16,37 @@ function isRetryable(err: unknown): boolean {
   return !!code && RETRYABLE_CODES.has(code);
 }
 
+// Read/write ops that accept `relationLoadStrategy` (join vs. per-relation query).
+const JOINABLE_OPS = new Set([
+  'findFirst',
+  'findFirstOrThrow',
+  'findUnique',
+  'findUniqueOrThrow',
+  'findMany',
+  'create',
+  'update',
+  'upsert',
+  'delete',
+]);
+
 function createPrismaClient() {
   return new PrismaClient().$extends({
-    name: 'retry-on-connection-drop',
+    name: 'slay-prisma',
     query: {
-      async $allOperations({ args, query }) {
+      async $allOperations({ args, query, operation }) {
+        // Fetch related records with one LATERAL-joined query instead of a
+        // round-trip per relation — big win when the DB is not co-located.
+        const withJoin =
+          JOINABLE_OPS.has(operation) &&
+          args &&
+          typeof args === 'object' &&
+          (('include' in args && args.include) || ('select' in args && args.select))
+            ? { ...(args as object), relationLoadStrategy: 'join' as const }
+            : args;
+
         for (let attempt = 1; ; attempt++) {
           try {
-            return await query(args);
+            return await query(withJoin);
           } catch (err) {
             if (attempt >= MAX_ATTEMPTS || !isRetryable(err)) throw err;
             await sleep(250 * attempt);

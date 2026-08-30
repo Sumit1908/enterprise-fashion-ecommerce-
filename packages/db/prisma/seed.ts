@@ -568,6 +568,24 @@ async function seedDemoProducts() {
         update: {},
       });
     }
+
+    // Collection membership (so /collections/<slug> pages have content).
+    const flags = d.flags as Record<string, boolean | undefined>;
+    const collections: string[] = [];
+    if (flags.isNewArrival) collections.push('new-arrivals');
+    if (d.sale < d.mrp) collections.push('sale');
+    if (d.mrp >= 4000 || flags.isExclusive) collections.push('premium-collection');
+    if (i % 2 === 0) collections.push('summer-edit');
+    for (const cslug of collections) {
+      const col = await prisma.collection.findUnique({ where: { slug: cslug } });
+      if (col) {
+        await prisma.productCollection.upsert({
+          where: { productId_collectionId: { productId: product.id, collectionId: col.id } },
+          create: { productId: product.id, collectionId: col.id },
+          update: {},
+        });
+      }
+    }
   }
   console.log(`  Demo data: ${brands.length} brands, ${demo.length} products with variants + stock`);
 }

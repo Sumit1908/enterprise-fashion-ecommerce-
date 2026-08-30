@@ -138,7 +138,7 @@ export class CartService {
       },
       update: { quantity: nextQty, unitPrice },
     });
-    await this.touch(cart.id);
+    void this.touch(cart.id);
     return this.view(ctx, cart.token);
   }
 
@@ -158,7 +158,7 @@ export class CartService {
       if (quantity > available) throw new BadRequestException(`Only ${available} left in stock`);
       await this.prisma.cartItem.update({ where: { id: itemId }, data: { quantity } });
     }
-    await this.touch(cart.id);
+    void this.touch(cart.id);
     return this.view(ctx, cart.token);
   }
 
@@ -166,7 +166,7 @@ export class CartService {
     const cart = await this.resolveCart(ctx);
     if (!cart) throw new NotFoundException('Cart not found');
     await this.prisma.cartItem.deleteMany({ where: { id: itemId, cartId: cart.id } });
-    await this.touch(cart.id);
+    void this.touch(cart.id);
     return this.view(ctx, cart.token);
   }
 
@@ -187,21 +187,29 @@ export class CartService {
   }
 
   async view(ctx: CartContext, forceToken?: string) {
-    const resolved = forceToken
-      ? { id: (await this.prisma.cart.findFirstOrThrow({ where: { sessionToken: forceToken } })).id, token: forceToken }
-      : await this.resolveCart(ctx);
+    // One query: fetch the cart + everything the view needs.
+    const cart = forceToken
+      ? await this.prisma.cart.findFirst({
+          where: { sessionToken: forceToken },
+          include: {
+            items: { orderBy: { addedAt: 'asc' }, include: { variant: { include: VARIANT_INCLUDE } } },
+          },
+        })
+      : await (async () => {
+          const resolved = await this.resolveCart(ctx);
+          if (!resolved) return null;
+          return this.prisma.cart.findUnique({
+            where: { id: resolved.id },
+            include: {
+              items: { orderBy: { addedAt: 'asc' }, include: { variant: { include: VARIANT_INCLUDE } } },
+            },
+          });
+        })();
 
-    if (!resolved) {
+    if (!cart) {
       const empty = await this.emptyTotals();
       return { token: null, items: [], itemCount: 0, coupon: null, summary: empty, notices: [] };
     }
-
-    const cart = await this.prisma.cart.findUniqueOrThrow({
-      where: { id: resolved.id },
-      include: {
-        items: { orderBy: { addedAt: 'asc' }, include: { variant: { include: VARIANT_INCLUDE } } },
-      },
-    });
 
     const notices: string[] = [];
     const items = cart.items.map((item) => {
@@ -252,7 +260,7 @@ export class CartService {
     });
 
     return {
-      token: resolved.token,
+      token: cart.sessionToken,
       items,
       itemCount: items.reduce((n, i) => n + i.quantity, 0),
       coupon: summary.coupon,
@@ -282,7 +290,9 @@ export class CartService {
   }
 
   private async touch(cartId: string): Promise<void> {
-    await this.prisma.cart.update({ where: { id: cartId }, data: { updatedAt: new Date() } });
+    await this.prisma.cart
+      .update({ where: { id: cartId }, data: { updatedAt: new Date() } })
+      .catch(() => undefined);
   }
 
   private async emptyTotals() {

@@ -15,19 +15,18 @@ const columns: { title: string; links: [string, string][] }[] = [
     title: 'Help',
     links: [
       ['Track Order', '/account/orders'],
-      ['Returns & Exchanges', '/returns'],
-      ['Size Guide', '/size-guide'],
-      ['Contact Us', '/contact'],
-      ['FAQs', '/faq'],
+      ['Shipping & Returns', '/pages/shipping-returns'],
+      ['Size Guide', '/pages/size-guide'],
+      ['Contact Us', '/pages/contact'],
+      ['FAQs', '/pages/faq'],
     ],
   },
   {
     title: 'Company',
     links: [
-      ['Our Story', '/about'],
-      ['Journal', '/blog'],
-      ['Careers', '/careers'],
-      ['Sustainability', '/sustainability'],
+      ['Our Story', '/pages/about'],
+      ['Privacy Policy', '/pages/privacy'],
+      ['Terms of Service', '/pages/terms'],
     ],
   },
 ];
@@ -60,7 +59,7 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="container-wide flex flex-col items-center justify-between gap-2 py-6 text-xs text-[var(--color-bone)]/50 sm:flex-row">
           <p>© {new Date().getFullYear()} Slay Jeans. All rights reserved.</p>
-          <p>Secure payments · SSL encrypted · Razorpay · Stripe · UPI</p>
+          <p>Secure checkout · SSL encrypted · Cash on Delivery available</p>
         </div>
       </div>
     </footer>

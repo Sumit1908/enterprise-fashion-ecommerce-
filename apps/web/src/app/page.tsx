@@ -53,7 +53,7 @@ function Hero({ data }: { data: HomeResponse }) {
 const PROMISES: [string, string][] = [
   ['Free Shipping', 'On orders over ₹999'],
   ['Easy Returns', '7-day hassle-free returns'],
-  ['Secure Payments', 'Razorpay · Stripe · UPI'],
+  ['Secure Checkout', 'SSL-encrypted & safe'],
   ['Cash on Delivery', 'Available across India'],
 ];
 
