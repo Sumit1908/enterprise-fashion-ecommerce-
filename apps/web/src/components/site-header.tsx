@@ -24,9 +24,9 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-[var(--color-paper)]">
-      <div className="overflow-hidden bg-[var(--color-ink)] text-[var(--color-bone)]">
+      <div className="overflow-hidden bg-[var(--color-cta)] text-white">
         <div className="container-wide flex h-9 items-center justify-center">
-          <div className="hide-scrollbar flex gap-10 overflow-x-auto whitespace-nowrap text-[0.68rem] uppercase tracking-[0.18em]">
+          <div className="hide-scrollbar flex gap-10 overflow-x-auto whitespace-nowrap text-[0.68rem] font-medium uppercase tracking-[0.18em]">
             {ANNOUNCEMENTS.map((line) => (
               <span key={line}>{line}</span>
             ))}

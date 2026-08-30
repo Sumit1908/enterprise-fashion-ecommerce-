@@ -105,7 +105,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
               href={`/c/${slug}?${qsFrom(sp, { sort: value })}`}
               className={`whitespace-nowrap rounded-full border px-3 py-1.5 ${
                 sp.sort === value
-                  ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
+                  ? 'border-[var(--color-cta)] bg-[var(--color-cta)] text-white'
                   : 'border-[var(--color-sand)]'
               }`}
             >
@@ -137,7 +137,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                 href={`/c/${slug}?${qsFrom(sp, { page })}`}
                 className={`rounded-md border px-3.5 py-2 ${
                   (sp.page ?? '1') === page
-                    ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
+                    ? 'border-[var(--color-cta)] bg-[var(--color-cta)] text-white'
                     : 'border-[var(--color-sand)]'
                 }`}
               >
