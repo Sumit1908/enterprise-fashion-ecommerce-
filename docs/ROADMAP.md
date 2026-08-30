@@ -32,7 +32,10 @@ Each phase is roughly 2–4 weeks for one full-stack engineer.
   related products, CSV import/export
 - Category tree drag/drop reorder (API `PATCH /admin/categories/reorder` exists); collection
   rules engine (automated collections)
-- Inventory: multi-warehouse levels UI, stock movements ledger, low-stock dashboard, adjustments
+- ✅ Inventory: stock levels list (search + low/out filters), manual adjustments with
+  reason + type, movement ledger, low-stock summary, per-variant alert threshold
+  (`/admin/inventory*` + admin Inventory screen). TODO: multi-warehouse transfers,
+  purchase orders, CSV stock upload
 - Elasticsearch indexing worker + instant search, autosuggest, synonyms, typo tolerance
 - Image pipeline: S3 upload, resize/optimise, blur placeholders, `next/image` loader
 - Dockerfiles for `api`; CI (lint + typecheck + test + prisma validate)
