@@ -77,7 +77,7 @@ export function AddToCart({ product }: { product: ProductDetail }) {
                   onClick={() => setSelected((s) => ({ ...s, [option.name]: v.value }))}
                   className={`min-w-11 rounded-md border px-3 py-2 text-sm transition-colors ${
                     active
-                      ? 'border-[var(--color-cta)] bg-[var(--color-cta)] text-white'
+                      ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
                       : 'border-[var(--color-sand)] hover:border-[var(--color-ink)]'
                   }`}
                 >
@@ -124,7 +124,7 @@ export function AddToCart({ product }: { product: ProductDetail }) {
           type="button"
           onClick={handleAdd}
           disabled={!anyStock || status === 'adding'}
-          className="flex-1 rounded-full bg-[var(--color-cta)] py-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-cta-hover)] disabled:opacity-40"
+          className="flex-1 rounded-full bg-[var(--color-ink)] py-4 text-sm font-semibold text-white transition-opacity disabled:opacity-40"
         >
           {status === 'adding'
             ? 'Adding…'
@@ -160,7 +160,7 @@ export function AddToCart({ product }: { product: ProductDetail }) {
           type="button"
           onClick={handleAdd}
           disabled={!anyStock || status === 'adding'}
-          className="flex-1 rounded-full bg-[var(--color-cta)] py-3 text-sm font-semibold text-white disabled:opacity-40"
+          className="flex-1 rounded-full bg-[var(--color-ink)] py-3 text-sm font-semibold text-white disabled:opacity-40"
         >
           {anyStock ? 'Add to Cart' : 'Out of Stock'}
         </button>

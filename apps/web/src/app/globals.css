@@ -4,24 +4,21 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 
-  /* Red & white palette — warm off-white base, near-black structure,
-     bold red as a sharp accent only (CTAs, badges, active states, eyebrows). */
-  --color-ink: #181818;
-  --color-ink-soft: #6b6b6b;
-  --color-ink-mute: #9a9a9a;
-  --color-bone: #f8f5f2;
+  /* Refined luxury palette — ivory, warm black, denim blue, warm gold */
+  --color-ink: #191512;
+  --color-ink-soft: #5f574e;
+  --color-ink-mute: #8c8377;
+  --color-bone: #f6f2ea;
   --color-paper: #ffffff;
-  --color-sand: #e7e3dd;
-  --color-line: #ded9d2;
-  /* "indigo" tokens are now near-black — used for full-bleed editorial panels */
-  --color-indigo: #1c1c1c;
-  --color-indigo-deep: #121212;
-  /* accent = the brand red */
-  --color-accent: #e8332a;
-  --color-accent-soft: #f2a7a2;
-  --color-sale: #e8332a;
-  --color-cta: #e8332a;
-  --color-cta-hover: #cc271f;
+  --color-sand: #e7dfd0;
+  --color-line: #ded4c2;
+  --color-indigo: #2f4058;
+  --color-indigo-deep: #1f2c3e;
+  --color-accent: #a5813f;
+  --color-accent-soft: #c9a86b;
+  --color-sale: #97493b;
+  /* Footer-only tokens (Bear House-style two-tone footer) */
+  --color-cta: #191512;
   --color-footer: #e9e5e0;
 }
 
@@ -96,35 +93,27 @@ body {
     transform 0.25s ease;
 }
 .btn-primary {
-  background: var(--color-cta);
-  color: #fff;
+  background: var(--color-ink);
+  color: var(--color-paper);
 }
 .btn-primary:hover {
-  background: var(--color-cta-hover);
+  background: var(--color-indigo);
 }
 .btn-outline {
   border: 1px solid currentColor;
 }
 .btn-outline:hover {
-  background: var(--color-cta);
-  color: #fff;
-  border-color: var(--color-cta);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-color: var(--color-ink);
 }
 .btn-light {
   background: var(--color-paper);
   color: var(--color-ink);
 }
 .btn-light:hover {
-  background: var(--color-cta);
-  color: #fff;
-}
-/* Solid near-black button, for the rare case a neutral CTA is wanted */
-.btn-dark {
-  background: var(--color-ink);
-  color: #fff;
-}
-.btn-dark:hover {
-  background: #000;
+  background: var(--color-accent);
+  color: var(--color-paper);
 }
 
 /* Link with an animated underline ------------------------------------- */

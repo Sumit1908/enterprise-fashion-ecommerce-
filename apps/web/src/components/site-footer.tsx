@@ -68,7 +68,7 @@ export function SiteFooter() {
         {/* Newsletter */}
         <div className="max-w-sm">
           <p className="font-display text-2xl uppercase tracking-[0.16em] text-[var(--color-ink)]">
-            Slay<span className="text-[var(--color-cta)]">&nbsp;Jeans</span>
+            Slay<span className="text-[var(--color-accent)]">&nbsp;Jeans</span>
           </p>
           <p className="mt-4 text-sm leading-relaxed text-[var(--color-ink-soft)]">
             Premium denim, considered fits and limited runs. Sign up for early access to new

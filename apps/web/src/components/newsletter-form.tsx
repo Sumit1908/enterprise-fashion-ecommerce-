@@ -65,7 +65,7 @@ export function NewsletterForm({
           {state === 'busy' ? 'Signing up…' : 'Sign up now'}
         </button>
         {state === 'error' && message && (
-          <span className="mt-2 block text-xs text-[var(--color-cta)]">{message}</span>
+          <span className="mt-2 block text-xs text-[var(--color-sale)]">{message}</span>
         )}
       </form>
     );

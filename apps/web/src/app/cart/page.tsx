@@ -195,7 +195,7 @@ export default function CartPage() {
             <button
               onClick={() => router.push('/checkout')}
               disabled={cart.items.every((i) => !i.inStock)}
-              className="mt-5 w-full rounded-full bg-[var(--color-cta)] py-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-cta-hover)] disabled:opacity-40"
+              className="mt-5 w-full rounded-full bg-[var(--color-ink)] py-4 text-sm font-semibold text-white disabled:opacity-40"
             >
               Proceed to checkout
             </button>
