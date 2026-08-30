@@ -4,22 +4,67 @@ Written for someone who has not run a Node.js project before. Follow it top to b
 
 ---
 
+## 0. Status on this development machine (as of 2026-08-30)
+
+Already done for you on this PC:
+
+| Step | State |
+| --- | --- |
+| Node.js 24 LTS, pnpm 9, Git 2.55, Docker Desktop 4.88 | ✅ installed |
+| WSL2 (needed by Docker) | ✅ installed — **needs one Windows restart to activate** |
+| `pnpm install` (all dependencies) | ✅ done |
+| `.env` file with the Neon database | ✅ created (git-ignored) |
+| Database tables (`prisma migrate`) | ✅ created on Neon |
+| Seed data (roles, categories, settings, 6 demo products) | ✅ loaded |
+| Storefront / Admin / API | ✅ built and verified running |
+
+**The database is Neon (hosted PostgreSQL)** — so you do *not* need Docker to run the
+app for now. Docker is only needed later for local Redis + Elasticsearch (Phase 2);
+that is why the pending Windows restart is not urgent.
+
+To start everything right now:
+
+```powershell
+pnpm dev
+```
+
+Then open <http://localhost:3000> (shop), <http://localhost:3001> (admin —
+`sumitnnnrealtor@gmail.com` / `ChangeMe!2026`), <http://localhost:4000/api/docs> (API).
+
+Everything below is the from-scratch reference for a new machine or a teammate.
+
+---
+
 ## 1. Install the tools (one time)
 
 | Tool | Why | Download |
 | --- | --- | --- |
-| **Node.js 22 LTS** | Runs the apps | <https://nodejs.org/en/download> — pick the "LTS" installer for your OS |
-| **pnpm 9** | Installs dependencies | After Node is installed, open a terminal and run `npm install -g pnpm` |
-| **Docker Desktop** | Runs the database, Redis and search locally | <https://www.docker.com/products/docker-desktop> |
-| **Git** (optional but recommended) | Version control | <https://git-scm.com/downloads> |
+| **Node.js 22 LTS or newer** | Runs the apps | <https://nodejs.org/en/download> — pick the "LTS" installer for your OS |
+| **pnpm 9** | Installs dependencies | After Node is installed, open a terminal and run `npm install -g pnpm@9` |
+| **Docker Desktop** | Local Redis + search (Phase 2); not needed if you use a hosted DB | <https://www.docker.com/products/docker-desktop> |
+| **Git** | Version control | <https://git-scm.com/downloads> |
 | **VS Code** (optional) | Code editor | <https://code.visualstudio.com> |
 
-Verify everything is installed — each should print a version number:
+On Windows you can install all of them in one go with **winget**:
+
+```powershell
+winget install OpenJS.NodeJS.LTS Git.Git Docker.DockerDesktop
+npm install -g pnpm@9
+```
+
+Docker Desktop needs the **WSL2** feature and a restart:
+
+```powershell
+wsl --install --no-distribution   # then restart Windows, then launch Docker Desktop once
+```
+
+Verify — each should print a version number:
 
 ```bash
-node -v      # v22.x
+node -v      # v22.x or v24.x
 pnpm -v      # 9.x
-docker -v    # Docker version 27.x
+git --version
+docker -v    # only needed for Phase 2
 ```
 
 > On Windows, use **PowerShell** or **Windows Terminal**. To copy the env file there:
@@ -49,13 +94,23 @@ those features. The app runs without them.
 
 ---
 
-## 3. Start the infrastructure
+## 3. Choose a database
+
+**Option A — hosted PostgreSQL (what this project uses now).** Neon, Supabase or
+RDS. Put the connection string in `.env` as both `DATABASE_URL` (the *pooled* URL)
+and `DIRECT_URL` (the *direct / unpooled* URL — used only for migrations). Nothing
+to start locally. Skip to step 4.
+
+> Neon note: a free Neon project auto-suspends after ~5 min idle, so the first
+> request after a pause can be slow or fail once. The API and the seed script both
+> retry connection drops automatically. To remove the pause entirely, disable
+> "Scale to zero" in the Neon dashboard.
+
+**Option B — local PostgreSQL in Docker** (needs the Windows restart above):
 
 ```bash
 pnpm infra:up
 ```
-
-This starts, in Docker:
 
 | Service | Port | Purpose |
 | --- | --- | --- |
@@ -65,7 +120,9 @@ This starts, in Docker:
 | MinIO | 9000 / 9001 | Local stand-in for AWS S3 |
 | Adminer | 8080 | Web UI to inspect the database |
 
-Stop them later with `pnpm infra:down`. Data is kept between restarts.
+Then set `DATABASE_URL` and `DIRECT_URL` to
+`postgresql://slay:slay@localhost:5432/slay_jeans?schema=public`.
+Stop later with `pnpm infra:down`. Data is kept between restarts.
 
 ---
 
