@@ -1,7 +1,9 @@
 import './bootstrap-env.js';
 import 'reflect-metadata';
+import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -12,9 +14,21 @@ import { HttpExceptionFilter } from './common/http-exception.filter.js';
 
 async function bootstrap() {
   const env = loadEnv();
-  const app = await NestFactory.create(AppModule, { cors: false });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: false });
 
-  app.use(helmet());
+  // Serve locally-stored media when S3 is not configured.
+  app.useStaticAssets(join(process.cwd(), env.MEDIA_UPLOAD_DIR), {
+    prefix: '/uploads/',
+    immutable: true,
+    maxAge: '365d',
+  });
+
+  app.use(
+    helmet({
+      // Allow the storefront/admin origins to load locally-served /uploads media.
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
   app.use(cookieParser(env.COOKIE_SECRET));
   // Bulk CSV imports can be large.
   app.use(json({ limit: '25mb' }));

@@ -42,6 +42,16 @@ export const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   S3_BUCKET: z.string().optional(),
   S3_PUBLIC_BASE_URL: optionalUrl,
+  // Optional: custom S3-compatible endpoint (e.g. MinIO, Cloudflare R2).
+  S3_ENDPOINT: optionalUrl,
+  S3_FORCE_PATH_STYLE: bool.default('false'),
+  // Local disk fallback used when S3 is not configured (dev only).
+  MEDIA_UPLOAD_DIR: z.string().default('uploads'),
+  MEDIA_MAX_MB: z.coerce.number().default(15),
+
+  // Product search backend. 'postgres' works with no extra infra;
+  // 'elasticsearch' requires a reachable ELASTICSEARCH_NODE.
+  SEARCH_DRIVER: z.enum(['postgres', 'elasticsearch']).default('postgres'),
 
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),

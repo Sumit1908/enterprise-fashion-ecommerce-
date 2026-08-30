@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/client';
 import { Button, Card, Checkbox, Field, Input, Select, Textarea } from '@/components/form';
+import { MediaUploader } from '@/components/media-uploader';
 
 const FLAGS: { key: string; label: string }[] = [
   { key: 'isFeatured', label: 'Featured' },
@@ -280,13 +281,36 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
         </Card>
 
         <Card title="Media">
-          <Field label="Image URLs" hint="One per line. Uploads to S3 land in Phase 2.">
-            <Textarea
-              value={v.mediaText}
-              onChange={(e) => set('mediaText', e.target.value)}
-              placeholder="https://…/front.jpg"
-            />
-          </Field>
+          <MediaUploader
+            onUploaded={(url) =>
+              set('mediaText', v.mediaText ? `${v.mediaText}\n${url}` : url)
+            }
+          />
+          <div className="mt-3">
+            <Field label="Image URLs" hint="One per line. Uploaded files are added here automatically.">
+              <Textarea
+                value={v.mediaText}
+                onChange={(e) => set('mediaText', e.target.value)}
+                placeholder="https://…/front.jpg"
+              />
+            </Field>
+          </div>
+          {v.mediaText.trim() && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {v.mediaText
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .map((url) => (
+                  <img
+                    key={url}
+                    src={url}
+                    alt=""
+                    className="h-16 w-16 rounded border border-[var(--color-line)] object-cover"
+                  />
+                ))}
+            </div>
+          )}
         </Card>
 
         <Card title="Details">

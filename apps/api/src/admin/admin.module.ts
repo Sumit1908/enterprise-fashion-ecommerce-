@@ -15,7 +15,6 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/permissions.guard.js';
 import { RequirePermissions } from '../common/decorators.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { AuditInterceptor } from '../common/audit.interceptor.js';
 import { CatalogAdminController } from './catalog-admin.controller.js';
 import { CatalogAdminService } from './catalog-admin.service.js';
 import { InventoryAdminController } from './inventory-admin.controller.js';
@@ -231,6 +230,6 @@ class AdminController {
 @Module({
   imports: [AuthModule],
   controllers: [AdminController, CatalogAdminController, InventoryAdminController],
-  providers: [CatalogAdminService, InventoryAdminService, AuditInterceptor],
+  providers: [CatalogAdminService, InventoryAdminService],
 })
 export class AdminModule {}

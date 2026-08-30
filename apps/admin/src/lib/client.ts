@@ -38,6 +38,23 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   return res.json() as Promise<T>;
 }
 
+/** Upload a file via multipart/form-data to an authenticated endpoint. */
+export async function apiUpload<T>(path: string, file: File, field = 'file'): Promise<T> {
+  const token = getToken();
+  const form = new FormData();
+  form.append(field, file);
+  const res = await fetch(`${API_BASE}/api/v1${path}`, {
+    method: 'POST',
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(body.message ?? `Upload failed (${res.status})`);
+  }
+  return res.json() as Promise<T>;
+}
+
 /** Fetch a file from an authenticated endpoint and trigger a browser download. */
 export async function apiDownload(path: string, filename: string): Promise<void> {
   const token = getToken();

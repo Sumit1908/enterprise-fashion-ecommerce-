@@ -3,11 +3,14 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { loadEnv } from '@slay/config';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { CommonModule } from './common/common.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { StorefrontModule } from './storefront/storefront.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { HealthModule } from './health/health.module.js';
+import { MediaModule } from './media/media.module.js';
+import { SearchModule } from './search/search.module.js';
 
 const env = loadEnv();
 
@@ -20,8 +23,11 @@ const env = loadEnv();
       },
     ]),
     PrismaModule,
+    CommonModule,
     HealthModule,
     AuthModule,
+    MediaModule,
+    SearchModule,
     CatalogModule,
     StorefrontModule,
     AdminModule,
