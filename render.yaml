@@ -10,8 +10,7 @@
 #    CORS_ALLOWED_ORIGINS and NEXT_PUBLIC_API_URL values to the real URLs and
 #    redeploy. (See DEPLOY.md.)
 #
-# Region "ohio" is AWS us-east-2 — the same region as the Neon database, so the
-# API sits next to its data. Keep them together.
+# Region "ohio" is AWS us-east-2 — the same region as the Neon database.
 
 services:
   # ---------------------------------------------------------------- API (NestJS)
@@ -22,8 +21,8 @@ services:
     plan: free # change to `starter` before real launch so it never sleeps
     autoDeploy: true
     buildCommand: >-
-      corepack enable && corepack prepare pnpm@9.15.9 --activate &&
-      pnpm install --frozen-lockfile &&
+      npm i -g pnpm@9.15.9 &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter @slay/config build &&
       pnpm --filter @slay/db build &&
       pnpm --filter @slay/api build
@@ -32,6 +31,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: DATABASE_URL # Neon DIRECT (unpooled) connection string
         sync: false
       - key: DIRECT_URL # same value as DATABASE_URL is fine
@@ -69,13 +70,15 @@ services:
     plan: free # change to `starter` before real launch
     autoDeploy: true
     buildCommand: >-
-      corepack enable && corepack prepare pnpm@9.15.9 --activate &&
-      pnpm install --frozen-lockfile &&
+      npm i -g pnpm@9.15.9 &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter @slay/web build
     startCommand: pnpm --filter @slay/web start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_OPTIONS
         value: --max-old-space-size=460
       - key: NEXT_TELEMETRY_DISABLED
@@ -93,13 +96,15 @@ services:
     plan: free
     autoDeploy: true
     buildCommand: >-
-      corepack enable && corepack prepare pnpm@9.15.9 --activate &&
-      pnpm install --frozen-lockfile &&
+      npm i -g pnpm@9.15.9 &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter @slay/admin build
     startCommand: pnpm --filter @slay/admin start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_OPTIONS
         value: --max-old-space-size=460
       - key: NEXT_TELEMETRY_DISABLED

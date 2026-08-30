@@ -27,6 +27,9 @@ generator client {
   // instead of one round-trip per relation. Cuts p95 latency dramatically when
   // the DB is not on the same host as the API.
   previewFeatures = ["relationJoins"]
+  // "native" covers local dev; the debian targets cover Render / most Linux
+  // hosts (Debian, OpenSSL 3.x and 1.1.x) so the query engine is always present.
+  binaryTargets   = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
 datasource db {
