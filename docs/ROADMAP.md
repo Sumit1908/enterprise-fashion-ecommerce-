@@ -23,13 +23,18 @@ Each phase is roughly 2–4 weeks for one full-stack engineer.
 
 ## Phase 2 — Catalog & inventory management
 
-- Admin product editor: variants matrix, media upload to S3, options, attributes,
-  size guides, related products, per-collection assignment, bulk actions, CSV import/export
-- Category tree editor (drag/drop), collection rules engine (automated collections)
-- Inventory: multi-warehouse levels, stock movements, low-stock dashboard, adjustments
+- ✅ Admin catalog write API: products (create/update/soft-delete, options, variants,
+  media, categories, collections, tags, SEO), bulk actions, brand + category-tree +
+  collection CRUD
+- ✅ `AuditLog` interceptor on all admin mutations + `GET /admin/audit`
+- ✅ Admin product editor screen + category/brand/collection manager screen
+- Product editor extras: variant matrix generator (multi-axis), attributes, size guides,
+  related products, CSV import/export
+- Category tree drag/drop reorder (API `PATCH /admin/categories/reorder` exists); collection
+  rules engine (automated collections)
+- Inventory: multi-warehouse levels UI, stock movements ledger, low-stock dashboard, adjustments
 - Elasticsearch indexing worker + instant search, autosuggest, synonyms, typo tolerance
-- Image pipeline: resize/optimise, blur placeholders, `next/image` loader
-- `AuditLog` interceptor on all admin mutations
+- Image pipeline: S3 upload, resize/optimise, blur placeholders, `next/image` loader
 - Dockerfiles for `api`; CI (lint + typecheck + test + prisma validate)
 
 ## Phase 3 — Cart, checkout, orders, payments
