@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 import { Public } from '../common/decorators.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { SearchService } from '../search/search.service.js';
 
 const CARD_SELECT = {
   id: true,
@@ -41,7 +42,10 @@ const AUTO_ORDER: Record<string, Prisma.ProductOrderByWithRelationInput> = {
 @UseGuards(JwtAuthGuard)
 @Controller('storefront')
 class StorefrontController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly searchService: SearchService,
+  ) {}
 
   @Public()
   @Get('home')
@@ -140,27 +144,38 @@ class StorefrontController {
       return { term, suggestions: [], products: [], trending: trending.map((t) => t.term) };
     }
 
-    void this.prisma.searchQuery
-      .create({ data: { term, normalizedTerm: term.toLowerCase() } })
-      .catch(() => undefined);
+    const esHits = await this.searchService.query(term, { limit: 12 });
 
-    const products = await this.prisma.product.findMany({
-      where: {
-        status: 'ACTIVE',
-        deletedAt: null,
-        OR: [
-          { name: { contains: term, mode: 'insensitive' } },
-          { shortDescription: { contains: term, mode: 'insensitive' } },
-          { brand: { name: { contains: term, mode: 'insensitive' } } },
-          { tags: { some: { tag: { name: { contains: term, mode: 'insensitive' } } } } },
-        ],
-      },
-      select: CARD_SELECT,
-      take: 12,
-    });
+    const products =
+      esHits ??
+      (await this.prisma.product.findMany({
+        where: {
+          status: 'ACTIVE',
+          deletedAt: null,
+          OR: [
+            { name: { contains: term, mode: 'insensitive' } },
+            { shortDescription: { contains: term, mode: 'insensitive' } },
+            { brand: { name: { contains: term, mode: 'insensitive' } } },
+            { tags: { some: { tag: { name: { contains: term, mode: 'insensitive' } } } } },
+          ],
+        },
+        select: CARD_SELECT,
+        take: 12,
+      }));
+
+    void this.prisma.searchQuery
+      .create({
+        data: {
+          term,
+          normalizedTerm: term.toLowerCase(),
+          resultCount: products.length,
+        },
+      })
+      .catch(() => undefined);
 
     return {
       term,
+      engine: esHits ? 'elasticsearch' : 'postgres',
       suggestions: products.slice(0, 6).map((p) => p.name),
       products,
     };

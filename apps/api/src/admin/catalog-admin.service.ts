@@ -7,6 +7,7 @@ import { AgeGroup, Gender, Prisma, ProductStatus } from '@slay/db';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { slugify, uniqueSlug } from '../common/slug.js';
 import { parseCsvRecords, toCsv } from '../common/csv.js';
+import { SearchService } from '../search/search.service.js';
 import type {
   BrandUpsertDto,
   BulkProductActionDto,
@@ -59,7 +60,15 @@ const PRODUCT_DETAIL_INCLUDE = {
 
 @Injectable()
 export class CatalogAdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly search: SearchService,
+  ) {}
+
+  /** Fire-and-forget search index update — never blocks or fails the request. */
+  private reindex(id: string): void {
+    void this.search.indexProduct(id).catch(() => undefined);
+  }
 
   /* ---------------------------------------------------------------- products */
 
@@ -138,6 +147,7 @@ export class CatalogAdminService {
     });
 
     await this.applyRelations(product.id, dto, { replace: true });
+    this.reindex(product.id);
     return this.getProduct(product.id);
   }
 
@@ -179,6 +189,7 @@ export class CatalogAdminService {
     });
 
     await this.applyRelations(id, dto, { replace: false });
+    this.reindex(id);
     return this.getProduct(id);
   }
 
@@ -193,12 +204,23 @@ export class CatalogAdminService {
       where: { id },
       data: { deletedAt: new Date(), status: ProductStatus.ARCHIVED },
     });
+    void this.search.removeProduct(id).catch(() => undefined);
     return { id, deleted: true };
   }
 
   async bulkProduct(dto: BulkProductActionDto) {
     if (dto.ids.length === 0) return { updated: 0 };
     const where: Prisma.ProductWhereInput = { id: { in: dto.ids }, deletedAt: null };
+
+    const syncIndex = () => {
+      for (const id of dto.ids) {
+        if (dto.action === 'delete') {
+          void this.search.removeProduct(id).catch(() => undefined);
+        } else {
+          this.reindex(id);
+        }
+      }
+    };
 
     switch (dto.action) {
       case 'setStatus': {
@@ -213,6 +235,7 @@ export class CatalogAdminService {
             ...(status === ProductStatus.ACTIVE ? { publishedAt: new Date() } : {}),
           },
         });
+        syncIndex();
         return { updated: res.count };
       }
       case 'setFlag':
@@ -223,6 +246,7 @@ export class CatalogAdminService {
           where,
           data: { [flag]: dto.action === 'setFlag' },
         });
+        syncIndex();
         return { updated: res.count };
       }
       case 'setSalePrice': {
@@ -233,6 +257,7 @@ export class CatalogAdminService {
           where,
           data: { salePrice: dto.numberValue },
         });
+        syncIndex();
         return { updated: res.count };
       }
       case 'delete': {
@@ -240,6 +265,7 @@ export class CatalogAdminService {
           where,
           data: { deletedAt: new Date(), status: ProductStatus.ARCHIVED },
         });
+        syncIndex();
         return { updated: res.count };
       }
       default:
@@ -914,6 +940,8 @@ export class CatalogAdminService {
             }
           }
         }
+
+        this.reindex(product.id);
       } catch (err) {
         report.errors.push({ slug, message: (err as Error).message });
       }
