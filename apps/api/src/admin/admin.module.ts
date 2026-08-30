@@ -18,6 +18,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditInterceptor } from '../common/audit.interceptor.js';
 import { CatalogAdminController } from './catalog-admin.controller.js';
 import { CatalogAdminService } from './catalog-admin.service.js';
+import { InventoryAdminController } from './inventory-admin.controller.js';
+import { InventoryAdminService } from './inventory-admin.service.js';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -228,7 +230,7 @@ class AdminController {
 
 @Module({
   imports: [AuthModule],
-  controllers: [AdminController, CatalogAdminController],
-  providers: [CatalogAdminService, AuditInterceptor],
+  controllers: [AdminController, CatalogAdminController, InventoryAdminController],
+  providers: [CatalogAdminService, InventoryAdminService, AuditInterceptor],
 })
 export class AdminModule {}

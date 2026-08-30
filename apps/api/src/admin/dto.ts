@@ -180,3 +180,37 @@ export class ListQueryDto {
   @ApiPropertyOptional({ default: 25 })
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize?: number;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Inventory                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export class InventoryQueryDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() q?: string;
+  @ApiPropertyOptional({ description: 'low | out | all' })
+  @IsOptional() @IsIn(['low', 'out', 'all']) filter?: 'low' | 'out' | 'all';
+  @ApiPropertyOptional() @IsOptional() @IsString() warehouseId?: string;
+  @ApiPropertyOptional({ default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @ApiPropertyOptional({ default: 50 })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) pageSize?: number;
+}
+
+export class MovementQueryDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() variantId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
+  @ApiPropertyOptional({ default: 1 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number;
+  @ApiPropertyOptional({ default: 50 })
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) pageSize?: number;
+}
+
+export class StockAdjustDto {
+  @IsString() variantId!: string;
+  @IsOptional() @IsString() warehouseId?: string;
+  @IsIn(['set', 'delta']) mode!: 'set' | 'delta';
+  @Type(() => Number) @IsInt() quantity!: number;
+  @IsOptional()
+  @IsIn(['PURCHASE', 'RETURN', 'ADJUSTMENT', 'DAMAGE', 'TRANSFER'])
+  type?: 'PURCHASE' | 'RETURN' | 'ADJUSTMENT' | 'DAMAGE' | 'TRANSFER';
+  @IsOptional() @IsString() @MaxLength(300) reason?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) lowStockThreshold?: number;
+}

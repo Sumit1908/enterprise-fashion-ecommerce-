@@ -8,6 +8,7 @@ import { clearToken, getToken } from '@/lib/client';
 const NAV = [
   { href: '/', label: 'Overview' },
   { href: '/products', label: 'Products' },
+  { href: '/inventory', label: 'Inventory' },
   { href: '/orders', label: 'Orders' },
   { href: '/customers', label: 'Customers' },
   { href: '/catalog', label: 'Categories & Collections' },
