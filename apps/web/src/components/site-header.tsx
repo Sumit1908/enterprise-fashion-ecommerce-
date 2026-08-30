@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { api, type CategoryNode } from '@/lib/api';
+import { CartBadge } from '@/components/cart-badge';
 
 async function getNav(): Promise<CategoryNode[]> {
   try {
@@ -42,12 +43,10 @@ export async function SiteHeader() {
           <Link href="/search" aria-label="Search" className="hover:text-[var(--color-accent)]">
             Search
           </Link>
-          <Link href="/account" aria-label="Account" className="hover:text-[var(--color-accent)]">
+          <Link href="/account/orders" aria-label="Account" className="hover:text-[var(--color-accent)]">
             Account
           </Link>
-          <Link href="/cart" aria-label="Cart" className="hover:text-[var(--color-accent)]">
-            Cart
-          </Link>
+          <CartBadge />
         </div>
       </div>
     </header>

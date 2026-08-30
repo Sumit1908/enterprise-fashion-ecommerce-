@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { api, discountPct, formatPrice, type ProductDetail } from '@/lib/api';
 import { ProductCard } from '@/components/product-card';
+import { AddToCart } from '@/components/add-to-cart';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -135,38 +136,7 @@ export default async function ProductPage({ params }: PageProps) {
           </div>
           <p className="mt-1 text-xs text-[var(--color-ink-soft)]">Inclusive of all taxes</p>
 
-          {product.options.map((option) => (
-            <div key={option.id} className="mt-6">
-              <p className="text-sm font-medium">{option.name}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {option.values.map((v) => (
-                  <button
-                    key={v.id}
-                    className="min-w-11 rounded-md border border-[var(--color-sand)] px-3 py-2 text-sm hover:border-[var(--color-ink)]"
-                  >
-                    {v.value}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          <div className="mt-8 flex gap-3">
-            <button
-              disabled={!inStock}
-              className="flex-1 rounded-full bg-[var(--color-ink)] py-4 text-sm font-semibold text-white disabled:opacity-40"
-            >
-              {inStock ? 'Add to Cart' : 'Out of Stock'}
-            </button>
-            <button className="rounded-full border border-[var(--color-sand)] px-6 text-sm font-semibold">
-              ♡
-            </button>
-          </div>
-          {!inStock && (
-            <button className="mt-3 w-full rounded-full border border-[var(--color-sand)] py-3 text-sm font-medium">
-              Notify me when back in stock
-            </button>
-          )}
+          <AddToCart product={product} />
 
           <div className="mt-8 space-y-4 border-t border-[var(--color-sand)] pt-6 text-sm">
             {product.description && (

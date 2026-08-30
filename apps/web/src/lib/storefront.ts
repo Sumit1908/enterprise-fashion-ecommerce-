@@ -1,0 +1,256 @@
+'use client';
+
+/**
+ * Client-side API helpers for cart / checkout / orders. These run in the browser
+ * and carry the guest cart token (persisted in localStorage).
+ */
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const CART_TOKEN_KEY = 'sj_cart_token';
+const AUTH_TOKEN_KEY = 'sj_token';
+
+export function getCartToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(CART_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+export function setCartToken(token: string | null): void {
+  try {
+    if (token) window.localStorage.setItem(CART_TOKEN_KEY, token);
+    else window.localStorage.removeItem(CART_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly body?: unknown,
+  ) {
+    super(message);
+  }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    ...(init.headers as Record<string, string> | undefined),
+  };
+  const cartToken = getCartToken();
+  if (cartToken) headers['x-cart-token'] = cartToken;
+  const auth = getAuthToken();
+  if (auth) headers.authorization = `Bearer ${auth}`;
+
+  const res = await fetch(`${API_BASE}/api/v1${path}`, { ...init, headers });
+  const text = await res.text();
+  const data = text ? (JSON.parse(text) as unknown) : null;
+  if (!res.ok) {
+    const msg =
+      (data as { message?: string | string[] })?.message ??
+      `Request failed (${res.status})`;
+    throw new ApiError(Array.isArray(msg) ? msg.join(', ') : msg, res.status, data);
+  }
+  return data as T;
+}
+
+/* ------------------------------------------------------------------ types */
+
+export interface CartItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
+  variantId: string;
+  sku: string;
+  variantLabel: string | null;
+  imageUrl: string | null;
+  unitPrice: string;
+  unitMrp: string;
+  quantity: number;
+  availableStock: number;
+  inStock: boolean;
+  lineTotal: string;
+}
+
+export interface CartSummary {
+  currency: string;
+  itemsSubtotal: string;
+  discountTotal: string;
+  shippingTotal: string;
+  taxTotal: string;
+  grandTotal: string;
+  freeShippingThreshold: string | null;
+  amountToFreeShipping: string;
+}
+
+export interface Cart {
+  token: string | null;
+  items: CartItem[];
+  itemCount: number;
+  coupon: { code: string; description: string | null; discount: number } | null;
+  summary: CartSummary;
+  notices: string[];
+}
+
+export interface ShippingOption {
+  id: string;
+  name: string;
+  price: string;
+  codFee: string;
+  freeAboveAmount: string | null;
+  codAvailable: boolean;
+  minDeliveryDays: number | null;
+  maxDeliveryDays: number | null;
+}
+
+export interface PaymentMethodOption {
+  method: string;
+  label: string;
+  description: string;
+  codAvailable: boolean;
+}
+
+export interface CheckoutSummary {
+  cart: Cart;
+  guestCheckoutEnabled: boolean;
+  minOrderAmount: number;
+  shippingOptions: ShippingOption[];
+  paymentMethods: PaymentMethodOption[];
+  serviceability: {
+    pincode: string;
+    serviceable: boolean;
+    etaMinDays?: number | null;
+    etaMaxDays?: number | null;
+    codAvailable: boolean;
+  } | null;
+}
+
+export interface OrderView {
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  currency: string;
+  placedAt: string;
+  confirmedAt: string | null;
+  deliveredAt: string | null;
+  customerNote: string | null;
+  totals: {
+    itemsSubtotal: string;
+    discountTotal: string;
+    shippingTotal: string;
+    taxTotal: string;
+    grandTotal: string;
+  };
+  couponCode: string | null;
+  shippingAddress: Record<string, string | null>;
+  billingAddress: Record<string, string | null>;
+  items: {
+    id: string;
+    productName: string;
+    variantLabel: string | null;
+    sku: string;
+    imageUrl: string | null;
+    unitPrice: string;
+    quantity: number;
+    lineTotal: string;
+  }[];
+  payment: { method: string; status: string; gateway: string | null; gatewayOrderId: string | null } | null;
+  timeline: { status: string; note: string | null; at: string }[];
+  shipments: {
+    provider: string;
+    awbNumber: string | null;
+    status: string;
+    trackingUrl: string | null;
+    estimatedDelivery: string | null;
+    events: { status: string; message: string | null; location: string | null; at: string }[];
+  }[];
+}
+
+export interface PaymentIntent {
+  provider: string;
+  requiresClientAction: boolean;
+  status: string;
+  providerOrderId?: string;
+  amount: number;
+  currency: string;
+  clientConfig?: Record<string, unknown>;
+}
+
+/* ---------------------------------------------------------------- endpoints */
+
+export const storefront = {
+  getCart: () => request<Cart>('/cart'),
+  addToCart: (variantId: string, quantity = 1) =>
+    request<Cart>('/cart/items', { method: 'POST', body: JSON.stringify({ variantId, quantity }) }),
+  updateCartItem: (itemId: string, quantity: number) =>
+    request<Cart>(`/cart/items/${itemId}`, { method: 'PATCH', body: JSON.stringify({ quantity }) }),
+  removeCartItem: (itemId: string) =>
+    request<Cart>(`/cart/items/${itemId}`, { method: 'DELETE' }),
+  applyCoupon: (code: string) =>
+    request<Cart>('/cart/coupon', { method: 'POST', body: JSON.stringify({ code }) }),
+  removeCoupon: () => request<Cart>('/cart/coupon', { method: 'DELETE' }),
+
+  checkoutSummary: (pincode?: string) =>
+    request<CheckoutSummary>(`/checkout${pincode ? `?pincode=${encodeURIComponent(pincode)}` : ''}`),
+  quote: (input: { pincode?: string; shippingRateId?: string; couponCode?: string; paymentMethod?: string }) =>
+    request<{ totals: OrderView['totals'] & { currency: string }; coupon: Cart['coupon']; shippingRateId: string | null; amountToFreeShipping: string }>(
+      '/checkout/quote',
+      { method: 'POST', body: JSON.stringify(input) },
+    ),
+  placeOrder: (body: unknown) =>
+    request<{ order: OrderView; payment: PaymentIntent }>('/checkout', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  verifyPayment: (body: {
+    orderNumber: string;
+    providerOrderId?: string;
+    providerPaymentId?: string;
+    signature?: string;
+    mockOutcome?: 'success' | 'failure';
+  }) => request<{ status: string; orderNumber: string }>('/checkout/verify', { method: 'POST', body: JSON.stringify(body) }),
+  retryPayment: (body: { orderNumber: string; paymentMethod: string }) =>
+    request<{ order: OrderView; payment: PaymentIntent }>('/checkout/retry', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  getOrder: (orderNumber: string, email?: string) =>
+    request<OrderView>(`/orders/${orderNumber}${email ? `?email=${encodeURIComponent(email)}` : ''}`),
+  myOrders: () =>
+    request<
+      {
+        orderNumber: string;
+        status: string;
+        paymentStatus: string;
+        grandTotal: string;
+        currency: string;
+        placedAt: string;
+        itemCount: number;
+        preview: { productName: string; imageUrl: string | null; quantity: number }[];
+      }[]
+    >('/orders'),
+};
+
+export function inr(value: string | number): string {
+  const n = typeof value === 'string' ? Number(value) : value;
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
