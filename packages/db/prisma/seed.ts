@@ -23,7 +23,28 @@ import {
   HomeSectionType,
 } from '@prisma/client';
 
-const prisma = new PrismaClient();
+/**
+ * Neon (and most serverless Postgres) drop idle connections aggressively, which
+ * surfaces mid-script as P1017 "Server has closed the connection". Retry the
+ * handful of transient connection errors so a long seed run survives them.
+ */
+const baseClient = new PrismaClient();
+const RETRYABLE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017', 'P2024']);
+const prisma = baseClient.$extends({
+  query: {
+    async $allOperations({ args, query }) {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await query(args);
+        } catch (err) {
+          const code = (err as { code?: string } | null)?.code;
+          if (attempt >= 6 || !code || !RETRYABLE_CODES.has(code)) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        }
+      }
+    },
+  },
+});
 
 function hashPassword(plain: string): string {
   const salt = randomBytes(16).toString('hex');
@@ -479,4 +500,4 @@ main()
     console.error(e);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => baseClient.$disconnect());
