@@ -1,109 +1,227 @@
 import Link from 'next/link';
 import { SITE } from '@/lib/site';
+import { NewsletterForm } from '@/components/newsletter-form';
 
-const columns: { title: string; links: [string, string][] }[] = [
+const columns: { title: string; links: { label: string; href: string; external?: boolean }[] }[] = [
   {
-    title: 'Shop',
+    title: 'Quick Shop',
     links: [
-      ['New In', '/collections/new-arrivals'],
-      ['Women', '/c/women'],
-      ['Men', '/c/men'],
-      ['Kids', '/c/kids'],
-      ['Shop All', '/shop'],
-      ['Sale', '/collections/sale'],
+      { label: 'New Arrivals', href: '/collections/new-arrivals' },
+      { label: 'Best Sellers', href: '/shop?sort=bestselling' },
+      { label: 'Trending Now', href: '/shop?sort=popular' },
+      { label: 'Shop All', href: '/shop' },
+      { label: 'Sale', href: '/collections/sale' },
     ],
   },
   {
-    title: 'Client Care',
+    title: 'Helpful Links',
     links: [
-      ['Track Order', '/account/orders'],
-      ['Contact Us', '/pages/contact'],
-      ['Shipping Policy', '/pages/shipping-policy'],
-      ['Return & Refund Policy', '/pages/returns-refunds'],
-      ['Cancellation Policy', '/pages/cancellation-policy'],
-      ['Size Guide', '/pages/size-guide'],
-      ['FAQs', '/pages/faq'],
+      { label: 'About Us', href: '/pages/about' },
+      { label: 'Contact Us', href: '/pages/contact' },
+      { label: 'Track Order', href: '/account/orders' },
+      { label: 'Size Guide', href: '/pages/size-guide' },
+      { label: 'FAQs', href: '/pages/faq' },
     ],
   },
   {
-    title: 'The House',
+    title: 'More',
     links: [
-      ['About Us', '/pages/about'],
-      ['Privacy Policy', '/pages/privacy'],
-      ['Terms & Conditions', '/pages/terms'],
+      { label: 'Shipping Policy', href: '/pages/shipping-policy' },
+      { label: 'Return & Refund Policy', href: '/pages/returns-refunds' },
+      { label: 'Cancellation Policy', href: '/pages/cancellation-policy' },
+      { label: 'Privacy Policy', href: '/pages/privacy' },
+      { label: 'Terms & Conditions', href: '/pages/terms' },
     ],
   },
 ];
 
+function ColumnLinks({ links }: { links: { label: string; href: string; external?: boolean }[] }) {
+  return (
+    <ul className="mt-5 space-y-3 text-sm text-[var(--color-ink-soft)]">
+      {links.map((l) => (
+        <li key={l.href + l.label}>
+          {l.external ? (
+            <a href={l.href} className="transition-colors hover:text-[var(--color-ink)]">
+              {l.label}
+            </a>
+          ) : (
+            <Link href={l.href} className="transition-colors hover:text-[var(--color-ink)]">
+              {l.label}
+            </Link>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const Heading = ({ children }: { children: React.ReactNode }) => (
+  <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.14em] text-[var(--color-ink)]">
+    {children}
+  </h3>
+);
+
 export function SiteFooter() {
   return (
-    <footer className="mt-24 bg-[var(--color-ink)] text-[var(--color-bone)]">
-      <div className="container-wide grid gap-12 py-16 md:grid-cols-[1.6fr_repeat(3,1fr)] lg:py-20">
-        <div>
-          <p className="font-display text-2xl uppercase tracking-[0.2em]">Slay&nbsp;Jeans</p>
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-[var(--color-bone)]/65">
-            Premium denim, considered fits and limited runs — designed in-house and made to be
-            worn for years, not seasons.
+    <footer className="mt-24 bg-[var(--color-footer)] text-[var(--color-ink)]">
+      <div className="container-wide grid gap-12 py-16 lg:grid-cols-[1.5fr_repeat(3,1fr)_1.1fr] lg:gap-10 lg:py-20">
+        {/* Newsletter */}
+        <div className="max-w-sm">
+          <p className="font-display text-2xl uppercase tracking-[0.16em] text-[var(--color-ink)]">
+            Slay<span className="text-[var(--color-cta)]">&nbsp;Jeans</span>
           </p>
-
-          <address className="mt-6 space-y-1 text-sm not-italic text-[var(--color-bone)]/65">
-            <p>{SITE.address.line1}</p>
-            <p>
-              {SITE.address.city}, {SITE.address.state} – {SITE.address.pincode}, {SITE.address.country}
-            </p>
-            <p className="pt-1">
-              <a href={`mailto:${SITE.email}`} className="link-underline hover:text-[var(--color-bone)]">
-                {SITE.email}
-              </a>
-            </p>
-            <p>
-              <a href={SITE.whatsappUrl} className="link-underline hover:text-[var(--color-bone)]">
-                WhatsApp / Call {SITE.phoneDisplay}
-              </a>
-            </p>
-            <p className="text-xs text-[var(--color-bone)]/45">{SITE.supportHours}</p>
-          </address>
-
-          <div className="mt-6 flex gap-4 text-[var(--color-bone)]/70">
-            <a href="https://instagram.com" aria-label="Instagram" className="hover:text-[var(--color-accent)]">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="3" width="18" height="18" rx="5" />
-                <circle cx="12" cy="12" r="4" />
-                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-              </svg>
-            </a>
-            <a href={SITE.whatsappUrl} aria-label="WhatsApp" className="hover:text-[var(--color-accent)]">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M4 20l1.4-4A8 8 0 1 1 8 18.6L4 20z" />
-                <path d="M9 9c0 4 2 6 6 6M9 9c0-1 .5-1.5 1-1.5M15 15c1 0 1.5-.5 1.5-1" />
-              </svg>
-            </a>
-          </div>
+          <p className="mt-4 text-sm leading-relaxed text-[var(--color-ink-soft)]">
+            Premium denim, considered fits and limited runs. Sign up for early access to new
+            washes, restocks and members-only pricing.
+          </p>
+          <NewsletterForm source="footer" variant="footer" />
         </div>
 
+        {/* Link columns */}
         {columns.map((col) => (
           <div key={col.title}>
-            <h3 className="eyebrow text-[var(--color-bone)]/90">{col.title}</h3>
-            <ul className="mt-5 space-y-2.5 text-sm text-[var(--color-bone)]/65">
-              {col.links.map(([label, href]) => (
-                <li key={href}>
-                  <Link href={href} className="link-underline hover:text-[var(--color-bone)]">
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <Heading>{col.title}</Heading>
+            <ColumnLinks links={col.links} />
           </div>
         ))}
+
+        {/* Get in touch */}
+        <div>
+          <Heading>Get in Touch</Heading>
+          <ul className="mt-5 space-y-4 text-sm text-[var(--color-ink-soft)]">
+            <li className="flex items-start gap-2.5">
+              <IconWhatsApp />
+              <a
+                href={SITE.whatsappUrl}
+                className="underline decoration-1 underline-offset-2 transition-colors hover:text-[var(--color-ink)]"
+              >
+                {SITE.phoneDisplay}
+              </a>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <IconPhone />
+              <a
+                href={`tel:${SITE.phoneE164}`}
+                className="transition-colors hover:text-[var(--color-ink)]"
+              >
+                {SITE.phoneDisplay}
+              </a>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <IconMail />
+              <a
+                href={`mailto:${SITE.email}`}
+                className="break-all transition-colors hover:text-[var(--color-ink)]"
+              >
+                {SITE.email}
+              </a>
+            </li>
+            <li className="flex items-start gap-2.5 text-[var(--color-ink-mute)]">
+              <IconPin />
+              <span>
+                {SITE.address.line1}, {SITE.address.city}, {SITE.address.state} –{' '}
+                {SITE.address.pincode}
+              </span>
+            </li>
+          </ul>
+
+          <div className="mt-6 flex gap-3 text-[var(--color-ink)]">
+            {/* Instagram + WhatsApp are the live channels; add real Facebook / X URLs when available. */}
+            <Social label="Instagram" href="https://instagram.com"><IconInstagram /></Social>
+            <Social label="Facebook" href="https://facebook.com"><IconFacebook /></Social>
+            <Social label="X" href="https://x.com"><IconX /></Social>
+            <Social label="WhatsApp" href={SITE.whatsappUrl}><IconWhatsApp /></Social>
+          </div>
+        </div>
       </div>
-      <div className="border-t border-white/10">
-        <div className="container-wide flex flex-col items-center justify-between gap-3 py-6 text-xs text-[var(--color-bone)]/45 sm:flex-row">
-          <p>
-            © {new Date().getFullYear()} {SITE.name}. {SITE.address.city}, {SITE.address.state}, India.
-          </p>
-          <p className="tracking-wide">Secure checkout · SSL encrypted · Cash on Delivery available</p>
+
+      <div className="border-t border-[var(--color-line)]">
+        <div className="container-wide py-5 text-center text-xs text-[var(--color-ink-mute)] sm:text-left">
+          © {new Date().getFullYear()} {SITE.name}. {SITE.address.city}, {SITE.address.state}, India.
+          All rights reserved.
         </div>
       </div>
     </footer>
+  );
+}
+
+function Social({
+  label,
+  href,
+  children,
+}: {
+  label: string;
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      aria-label={label}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-ink)]/25 text-[var(--color-ink)] transition-colors hover:border-[var(--color-ink)] hover:bg-[var(--color-ink)] hover:text-white"
+    >
+      {children}
+    </a>
+  );
+}
+
+/* ---------------------------------------------------------------- icons */
+
+const svg = 'h-[1.05rem] w-[1.05rem] shrink-0';
+
+function IconWhatsApp() {
+  return (
+    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20l1.4-4A8 8 0 1 1 8 18.6L4 20z" />
+      <path d="M9 9c0 4 2 6 6 6M9 9c0-1 .5-1.6 1-1.6M15 15c1 0 1.6-.5 1.6-1" />
+    </svg>
+  );
+}
+function IconPhone() {
+  return (
+    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5L19 16l4 1.5V21a2 2 0 0 1-2 2A18 18 0 0 1 3 5a2 2 0 0 1 2-1z" />
+    </svg>
+  );
+}
+function IconMail() {
+  return (
+    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+function IconPin() {
+  return (
+    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+function IconInstagram() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+      <circle cx="12" cy="12" r="3.6" />
+      <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconFacebook() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M14 8.5V6.7c0-.8.5-1.2 1.2-1.2H17V2.6h-2.6c-2.6 0-3.8 1.7-3.8 4v1.9H8.5v3h2.1V22h3.4v-10.5H16l.6-3H14z" />
+    </svg>
+  );
+}
+function IconX() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M4 4l16 16M20 4L4 20" />
+    </svg>
   );
 }
