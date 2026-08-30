@@ -39,9 +39,13 @@ Each phase is roughly 2–4 weeks for one full-stack engineer.
   reason + type, movement ledger, low-stock summary, per-variant alert threshold
   (`/admin/inventory*` + admin Inventory screen). TODO: multi-warehouse transfers,
   purchase orders, CSV stock upload
-- Elasticsearch indexing worker + instant search, autosuggest, synonyms, typo tolerance
-- Image pipeline: S3 upload, resize/optimise, blur placeholders, `next/image` loader
-- Dockerfiles for `api`; CI (lint + typecheck + test + prisma validate)
+- ✅ Elasticsearch product search (search-as-you-type + fuzziness), auto Postgres
+  fallback, reindex on catalog writes + `POST /admin/search/reindex`. TODO: synonyms
+  from `SearchTerm`, autosuggest endpoint, search-analytics dashboard
+- ✅ Media uploads: S3 (server-side + presigned) with local-disk fallback, admin
+  uploader UI. TODO: server-side resize/optimise, blur placeholders, `next/image` loader
+- ✅ Dockerfiles for api / web / admin; GitHub Actions CI (install → prisma
+  generate/validate/migrate → lint → typecheck → build → test → docker build)
 
 ## Phase 3 — Cart, checkout, orders, payments
 

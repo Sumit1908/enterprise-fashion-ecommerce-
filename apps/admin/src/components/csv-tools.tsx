@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiDownload, apiFetch } from '@/lib/client';
 
 interface ImportReport {
@@ -78,6 +78,8 @@ export function CsvTools({ onImported }: { onImported: () => void }) {
         />
       </div>
 
+      <SearchIndexButton />
+
       {error && <p className="text-xs text-[var(--color-bad)]">{error}</p>}
 
       {report && (
@@ -99,6 +101,46 @@ export function CsvTools({ onImported }: { onImported: () => void }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SearchIndexButton() {
+  const [status, setStatus] = useState<{ driver: string; healthy: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ driver: string; healthy: boolean }>('/admin/search/status')
+      .then(setStatus)
+      .catch(() => undefined);
+  }, []);
+
+  if (!status || status.driver !== 'elasticsearch') return null;
+
+  return (
+    <div className="text-right text-xs">
+      <button
+        onClick={async () => {
+          setBusy(true);
+          setMsg(null);
+          try {
+            const r = await apiFetch<{ indexed: number }>('/admin/search/reindex', {
+              method: 'POST',
+            });
+            setMsg(`Reindexed ${r.indexed} products.`);
+          } catch (e) {
+            setMsg((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        disabled={busy}
+        className="rounded-md border border-[var(--color-line)] px-3 py-1.5 disabled:opacity-50"
+      >
+        {busy ? 'Reindexing…' : 'Rebuild search index'}
+      </button>
+      {msg && <p className="mt-1 text-[var(--color-muted)]">{msg}</p>}
     </div>
   );
 }

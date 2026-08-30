@@ -302,6 +302,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
                 .map((s) => s.trim())
                 .filter(Boolean)
                 .map((url) => (
+                  // eslint-disable-next-line @next/next/no-img-element -- admin thumbnail, arbitrary external hosts
                   <img
                     key={url}
                     src={url}

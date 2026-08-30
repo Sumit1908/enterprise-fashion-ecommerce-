@@ -181,6 +181,47 @@ Until every admin screen is built (see `ROADMAP.md`), you can edit these directl
 
 ---
 
+## 6a. Product images
+
+- **No setup needed for local dev.** Uploading an image in Admin → Products saves it
+  to `apps/api/uploads/` and the API serves it at `/uploads/...`.
+- **To use AWS S3** (recommended for production): fill in `AWS_ACCESS_KEY_ID`,
+  `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET` and (optionally) `S3_PUBLIC_BASE_URL` in `.env`,
+  then restart the API. It automatically switches to S3 — no code change. The bucket
+  must allow public reads of uploaded objects (or serve them via CloudFront).
+- Works with any S3-compatible store (MinIO, Cloudflare R2) via `S3_ENDPOINT` +
+  `S3_FORCE_PATH_STYLE=true`.
+
+## 6b. Search
+
+- Default `SEARCH_DRIVER=postgres` — works with no extra services.
+- For Elasticsearch: start it (`pnpm infra:up` brings one up on `:9200`), set
+  `SEARCH_DRIVER=elasticsearch`, restart the API, then click **Rebuild search index**
+  on the Admin → Products page (or `POST /api/v1/admin/search/reindex`).
+- If Elasticsearch becomes unreachable, search silently falls back to Postgres — the
+  storefront never breaks.
+
+---
+
+## 6c. Docker images (for deployment)
+
+Each app has a Dockerfile built from the repo root:
+
+```bash
+docker build -f apps/api/Dockerfile   -t slay-api   .
+docker build -f apps/web/Dockerfile   -t slay-web   --build-arg NEXT_PUBLIC_API_URL=https://api.example.com .
+docker build -f apps/admin/Dockerfile -t slay-admin --build-arg NEXT_PUBLIC_API_URL=https://api.example.com .
+```
+
+> The web/admin images use Next.js `output: 'standalone'`, which is enabled only
+> inside Docker (`BUILD_STANDALONE=1`). Local `pnpm build` on Windows is unaffected.
+
+CI (`.github/workflows/ci.yml`) runs install → prisma generate/validate/migrate →
+lint → typecheck → build → test on every push/PR against a throwaway Postgres, then
+builds all three Docker images on push.
+
+---
+
 ## 7. Production deployment (summary)
 
 1. **Database** — managed PostgreSQL (AWS RDS, Neon, Supabase). Put its URL in
@@ -189,8 +230,8 @@ Until every admin screen is built (see `ROADMAP.md`), you can edit these directl
 3. **Search** — managed Elasticsearch / OpenSearch. Set `ELASTICSEARCH_NODE`.
 4. **Media** — create an S3 bucket + CloudFront distribution. Set the `AWS_*` and
    `S3_*` variables.
-5. **Apps** — deploy `apps/web` and `apps/admin` to Vercel (or Docker), `apps/api` to
-   AWS ECS / Fly.io / Render as a Docker container. `Dockerfile`s are added in Phase 2.
+5. **Apps** — deploy `apps/web` and `apps/admin` to Vercel, or build the Dockerfiles
+   (see 6c) and run `apps/api` on ECS / Fly.io / Render.
 6. **Payments & shipping** — paste live keys into `.env` *and* toggle the provider to
    live mode in Admin → Settings → Integrations. Point each provider's webhook at
    `https://api.yourdomain.com/api/v1/webhooks/<provider>`.
