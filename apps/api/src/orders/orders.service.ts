@@ -6,13 +6,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, type OrderStatus, type PaymentMethod } from '@slay/db';
+import { loadEnv } from '@slay/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CartService, type CartContext } from '../cart/cart.service.js';
 import { PricingService } from '../pricing/pricing.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
+import { EmailService } from '../email/email.service.js';
+import { BRAND } from '../common/brand.js';
 import type { PaymentInitResult } from '../payments/payment-provider.js';
 import { money, round2, toNumber } from '../common/money.js';
 import type { AddressDto, PlaceOrderDto } from './orders.dto.js';
+
+const env = loadEnv();
 
 const ORDER_INCLUDE = {
   items: { orderBy: { id: 'asc' as const } },
@@ -35,6 +40,7 @@ export class OrdersService {
     private readonly cart: CartService,
     private readonly pricing: PricingService,
     private readonly payments: PaymentsService,
+    private readonly email: EmailService,
   ) {}
 
   /* ------------------------------------------------------------- placement */
@@ -235,7 +241,11 @@ export class OrdersService {
   ): Promise<void> {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { order: { include: { items: true } } },
+      include: {
+        order: {
+          include: { items: true, user: { select: { email: true, firstName: true } } },
+        },
+      },
     });
     if (!payment) throw new NotFoundException('Payment not found');
     if (payment.status === 'PAID') return; // already done
@@ -354,6 +364,93 @@ export class OrdersService {
     }, { timeout: 20_000 });
 
     this.logger.log(`Order ${order.orderNumber} finalised (${details.source})`);
+
+    // Order confirmation email — best-effort, never blocks the order.
+    const to = payment.order.user?.email ?? payment.order.guestEmail;
+    if (to) {
+      void this.sendOrderConfirmation(to, payment.order.user?.firstName ?? null, {
+        orderNumber: order.orderNumber,
+        currency: order.currency,
+        grandTotal: order.grandTotal.toString(),
+        codPending,
+        items: payment.order.items.map((i) => ({
+          name: i.productName,
+          label: i.variantLabel,
+          qty: i.quantity,
+          lineTotal: i.lineTotal.toString(),
+        })),
+        shippingAddress: order.shippingAddress,
+      }).catch((e) => this.logger.warn(`Order email skipped: ${(e as Error).message}`));
+    }
+  }
+
+  private async sendOrderConfirmation(
+    to: string,
+    firstName: string | null,
+    o: {
+      orderNumber: string;
+      currency: string;
+      grandTotal: string;
+      codPending: boolean;
+      items: { name: string; label: string | null; qty: number; lineTotal: string }[];
+      shippingAddress: Prisma.JsonValue;
+    },
+  ): Promise<void> {
+    if (!this.email.configured) return;
+    const track = `${env.WEB_URL}/order/${o.orderNumber}?email=${encodeURIComponent(to)}`;
+    const addr = (o.shippingAddress ?? {}) as Record<string, unknown>;
+    const addrLine = [addr.fullName, addr.line1, addr.line2, addr.city, addr.state, addr.pincode]
+      .filter(Boolean)
+      .map((x) => esc(String(x)))
+      .join(', ');
+    const rows = o.items
+      .map(
+        (i) =>
+          `<tr><td style="padding:6px 0">${esc(i.name)}${
+            i.label ? ` <span style="color:#8c8377">(${esc(i.label)})</span>` : ''
+          } × ${i.qty}</td><td style="padding:6px 0;text-align:right">${o.currency} ${esc(i.lineTotal)}</td></tr>`,
+      )
+      .join('');
+    const hi = firstName ? `Hi ${esc(firstName)},` : 'Hi,';
+    const pay = o.codPending
+      ? `Payment: Cash on Delivery — please keep ${o.currency} ${esc(o.grandTotal)} ready for the delivery agent.`
+      : `Payment received.`;
+
+    const result = await this.email.send({
+      to,
+      subject: `${BRAND.name} — order ${o.orderNumber} confirmed`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#191512">
+          <p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#a5813f;font-family:Georgia,serif">${BRAND.name}</p>
+          <h1 style="font-size:22px;font-weight:600;font-family:Georgia,serif">Your order is confirmed</h1>
+          <p style="font-size:14px;line-height:1.6;color:#5f574e">${hi} thank you for your order <strong>${o.orderNumber}</strong>. We&rsquo;re getting it ready and will email a tracking link once it ships.</p>
+          <table style="width:100%;font-size:14px;border-top:1px solid #e7dfd0;border-bottom:1px solid #e7dfd0;margin:16px 0">${rows}
+            <tr><td style="padding:10px 0;font-weight:700">Total</td><td style="padding:10px 0;text-align:right;font-weight:700">${o.currency} ${esc(o.grandTotal)}</td></tr>
+          </table>
+          <p style="font-size:13px;color:#5f574e">${pay}</p>
+          ${addrLine ? `<p style="font-size:13px;color:#5f574e">Delivering to: ${addrLine}</p>` : ''}
+          <p style="margin:20px 0"><a href="${track}" style="background:#191512;color:#fff;padding:10px 18px;text-decoration:none;font-size:13px">Track your order</a></p>
+          <p style="font-size:12px;color:#8c8377;border-top:1px solid #e7dfd0;padding-top:12px">
+            Need help? Email <a href="mailto:${BRAND.email}" style="color:#8c8377">${BRAND.email}</a> or WhatsApp ${BRAND.phoneDisplay}.<br>
+            ${BRAND.name}, ${BRAND.addressInline}
+          </p>
+        </div>`,
+    });
+
+    await this.prisma.notification
+      .updateMany({
+        where: {
+          channel: 'EMAIL',
+          status: 'QUEUED',
+          title: `Order ${o.orderNumber} confirmed`,
+        },
+        data: {
+          status: result.delivered ? 'SENT' : 'FAILED',
+          sentAt: result.delivered ? new Date() : null,
+          error: result.delivered ? null : (result.reason ?? 'not delivered'),
+        },
+      })
+      .catch(() => undefined);
   }
 
   async failPayment(paymentId: string, reason: string, source: string): Promise<void> {
@@ -685,6 +782,10 @@ export class OrdersService {
 }
 
 /* ------------------------------------------------------------------ helpers */
+
+function esc(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
 
 function addressJson(a: AddressDto): Prisma.InputJsonValue {
   return {

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { SITE } from '@/lib/site';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -55,7 +56,9 @@ function Inner() {
           <p className="mt-2">You won&apos;t receive any more marketing emails from us.</p>
         </>
       )}
-      {state === 'error' && 'This unsubscribe link looks invalid or has expired. Contact help@slayjeans.com and we&apos;ll sort it out.'}
+      {state === 'error' && (
+        <>This unsubscribe link looks invalid or has expired. Email {SITE.email} and we&apos;ll sort it out.</>
+      )}
     </Shell>
   );
 }

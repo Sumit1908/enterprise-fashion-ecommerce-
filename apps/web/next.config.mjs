@@ -18,6 +18,12 @@ const nextConfig = {
       { protocol: 'http', hostname: 'localhost' },
     ],
   },
+  async redirects() {
+    return [
+      // Older combined page split into two policy pages.
+      { source: '/pages/shipping-returns', destination: '/pages/shipping-policy', permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -3,7 +3,17 @@ import { api } from '@/lib/api';
 
 const base = process.env.WEB_URL ?? 'http://localhost:3000';
 
-const INFO_PAGES = ['about', 'contact', 'shipping-returns', 'size-guide', 'faq', 'privacy', 'terms'];
+const INFO_PAGES = [
+  'about',
+  'contact',
+  'shipping-policy',
+  'returns-refunds',
+  'cancellation-policy',
+  'size-guide',
+  'faq',
+  'privacy',
+  'terms',
+];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
