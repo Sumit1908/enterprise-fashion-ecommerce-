@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiFetch, money } from '@/lib/client';
 import { DataTable, PageHeader } from '@/components/shell';
 
@@ -51,7 +52,15 @@ export default function ProductsPage() {
 
   return (
     <>
-      <PageHeader title="Products" subtitle={`${total} products`} />
+      <div className="flex items-start justify-between">
+        <PageHeader title="Products" subtitle={`${total} products`} />
+        <Link
+          href="/products/new"
+          className="rounded-md bg-[var(--color-brand)] px-4 py-2 text-sm font-medium text-white"
+        >
+          New product
+        </Link>
+      </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input
@@ -88,7 +97,12 @@ export default function ProductsPage() {
             header: 'Product',
             render: (r) => (
               <div>
-                <p className="font-medium">{r.name}</p>
+                <Link
+                  href={`/products/${r.id}`}
+                  className="font-medium text-[var(--color-brand)] hover:underline"
+                >
+                  {r.name}
+                </Link>
                 <p className="text-xs text-[var(--color-muted)]">
                   {r.brand?.name ?? '—'} · {r._count.variants} variants · {r.sku ?? 'no SKU'}
                 </p>
