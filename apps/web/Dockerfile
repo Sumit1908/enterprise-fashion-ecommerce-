@@ -18,6 +18,8 @@ COPY apps/web ./apps/web
 # The build reads NEXT_PUBLIC_* at build time.
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Emit the self-contained server bundle (.next/standalone) copied below.
+ENV BUILD_STANDALONE=1
 RUN pnpm --filter @slay/web build
 
 FROM base AS runner

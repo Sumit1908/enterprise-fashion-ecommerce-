@@ -34,6 +34,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
+# claude code local state
+.claude/scheduled_tasks.lock
+.claude/**/*.lock
+
 # prisma
 packages/db/prisma/*.db
 

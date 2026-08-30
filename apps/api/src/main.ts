@@ -66,7 +66,9 @@ async function bootstrap() {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
 
-  const port = Number(new URL(env.API_URL).port || 4000);
+  // Hosts like Render/Railway inject PORT; fall back to the port in API_URL, then 4000.
+  const port =
+    Number(process.env.PORT) || Number(new URL(env.API_URL).port) || 4000;
   await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`API ready on ${env.API_URL}  (docs at ${env.API_URL}/api/docs)`);

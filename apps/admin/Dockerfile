@@ -17,6 +17,7 @@ COPY packages ./packages
 COPY apps/admin ./apps/admin
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV BUILD_STANDALONE=1
 RUN pnpm --filter @slay/admin build
 
 FROM base AS runner
