@@ -189,23 +189,25 @@ async function seedSuperAdmin() {
 const U = (id: string, w = 900) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`;
 
+// Consistent, clean editorial imagery. Replace any of these from the admin
+// (Categories & Collections -> edit -> image) once real photography exists.
 const CATEGORY_IMAGE: Record<string, string> = {
-  Men: U('1441984904996-e0b6ba687e04'),
-  Women: U('1509631179647-0177331693ae'),
-  Kids: U('1518831959646-742c3a14ebf7'),
-  Footwear: U('1560769629-975ec94e6a86'),
+  Men: U('1542272604-787c3835535d'),
+  Women: U('1475178626620-a4d074967452'),
+  Kids: U('1471286174890-9c112ffca5b4'),
+  Footwear: U('1549298916-b41d501d3772'),
   Watches: U('1483118714900-540cf339fd46'),
-  Bags: U('1490114538077-0a7f8cb49891'),
+  Bags: U('1548036328-c9fa89d128fa'),
   Belts: U('1490114538077-0a7f8cb49891'),
   Wallets: U('1490114538077-0a7f8cb49891'),
-  Sunglasses: U('1490114538077-0a7f8cb49891'),
+  Sunglasses: U('1511499767150-a48a237f0083'),
   Accessories: U('1490114538077-0a7f8cb49891'),
 };
 
 const COLLECTION_IMAGE: Record<string, string> = {
   'New Arrivals': U('1604176354204-9268737828e4'),
   'Premium Collection': U('1584865288642-42078afe6942'),
-  Sale: U('1560243563-062bfc001d68'),
+  Sale: U('1602293589930-45aad59ba3ab'),
   'Summer Edit': U('1582418702059-97ebafb35d09'),
 };
 

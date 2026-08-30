@@ -33,6 +33,14 @@ export function getAuthToken(): string | null {
     return null;
   }
 }
+export function setAuthToken(token: string | null): void {
+  try {
+    if (token) window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+    else window.localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -180,6 +188,24 @@ export interface OrderView {
   }[];
 }
 
+export interface WishlistProduct {
+  id: string;
+  name: string;
+  slug: string;
+  mrp: string;
+  salePrice: string;
+  currency: string;
+  ratingAverage: number;
+  ratingCount: number;
+  isNewArrival?: boolean;
+  brand?: { name: string; slug: string } | null;
+  media: { url: string; alt: string | null }[];
+}
+
+export interface WishlistResponse {
+  items: { id: string; addedAt: string; product: WishlistProduct }[];
+}
+
 export interface PaymentIntent {
   provider: string;
   requiresClientAction: boolean;
@@ -229,6 +255,40 @@ export const storefront = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  register: (body: { email: string; password: string; firstName?: string }) =>
+    request<{ accessToken: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  login: (body: { email: string; password: string }) =>
+    request<{ accessToken: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  me: () =>
+    request<{
+      id: string;
+      email: string | null;
+      firstName: string | null;
+      lastName: string | null;
+      loyaltyPoints: number;
+    }>('/auth/me'),
+  logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }).catch(() => ({ ok: true })),
+
+  subscribeNewsletter: (body: { email: string; firstName?: string; source?: string }) =>
+    request<{ ok: boolean; status: string }>('/newsletter/subscribe', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  getWishlist: () => request<WishlistResponse>('/wishlist'),
+  addWishlist: (slug: string) =>
+    request<WishlistResponse>('/wishlist', { method: 'POST', body: JSON.stringify({ slug }) }),
+  removeWishlist: (productId: string) =>
+    request<WishlistResponse>(`/wishlist/${productId}`, { method: 'DELETE' }),
+  mergeWishlist: (slugs: string[]) =>
+    request<WishlistResponse>('/wishlist/merge', { method: 'POST', body: JSON.stringify({ slugs }) }),
 
   getOrder: (orderNumber: string, email?: string) =>
     request<OrderView>(`/orders/${orderNumber}${email ? `?email=${encodeURIComponent(email)}` : ''}`),

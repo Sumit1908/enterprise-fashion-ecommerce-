@@ -33,6 +33,12 @@ type MerchFlag = (typeof MERCH_FLAGS)[number];
 const GENDER_VALUES = Object.values(Gender);
 const AGE_GROUP_VALUES = Object.values(AgeGroup);
 
+/** Treat a blank string from a form field as "clear this value". */
+function emptyToNull(v: string | undefined | null): string | null {
+  const t = (v ?? '').trim();
+  return t === '' ? null : t;
+}
+
 /** Split a "a|b, c" style cell into trimmed, non-empty tokens. */
 function splitList(raw: string | undefined): string[] {
   return (raw ?? '')
@@ -382,6 +388,9 @@ export class CatalogAdminService {
     // Full replace of the option/variant set — the editor always sends the
     // complete list, so this keeps state predictable.
     if (!replace) {
+      // Stale guest cart lines would block the variant delete (required FK);
+      // drop them first so a restructure never 500s.
+      await this.prisma.cartItem.deleteMany({ where: { variant: { productId } } });
       await this.prisma.productVariant.deleteMany({ where: { productId } });
       await this.prisma.productOption.deleteMany({ where: { productId } });
     }
@@ -450,6 +459,7 @@ export class CatalogAdminService {
         id: true,
         name: true,
         slug: true,
+        description: true,
         parentId: true,
         gender: true,
         ageGroup: true,
@@ -458,10 +468,20 @@ export class CatalogAdminService {
         showInMenu: true,
         sortOrder: true,
         imageUrl: true,
+        bannerUrl: true,
         _count: { select: { products: true, children: true } },
       },
     });
     return all;
+  }
+
+  async getCategory(id: string) {
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+      include: { _count: { select: { products: true, children: true } } },
+    });
+    if (!category) throw new NotFoundException('Category not found');
+    return category;
   }
 
   async createCategory(dto: CategoryUpsertDto) {
@@ -474,13 +494,15 @@ export class CatalogAdminService {
       data: {
         name: dto.name,
         slug,
-        description: dto.description,
+        description: emptyToNull(dto.description),
         parentId: dto.parentId || null,
         gender: dto.gender,
         ageGroup: dto.ageGroup,
-        imageUrl: dto.imageUrl,
-        bannerUrl: dto.bannerUrl,
-        seoContent: dto.seoContent,
+        imageUrl: emptyToNull(dto.imageUrl),
+        bannerUrl: emptyToNull(dto.bannerUrl),
+        bannerMobileUrl: emptyToNull(dto.bannerMobileUrl),
+        iconUrl: emptyToNull(dto.iconUrl),
+        seoContent: emptyToNull(dto.seoContent),
         isActive: dto.isActive ?? true,
         isFeatured: dto.isFeatured ?? false,
         showInMenu: dto.showInMenu ?? true,
@@ -509,13 +531,16 @@ export class CatalogAdminService {
       data: {
         name: dto.name ?? undefined,
         slug,
-        description: dto.description,
+        description: dto.description === undefined ? undefined : emptyToNull(dto.description),
         parentId,
         gender: dto.gender,
         ageGroup: dto.ageGroup,
-        imageUrl: dto.imageUrl,
-        bannerUrl: dto.bannerUrl,
-        seoContent: dto.seoContent,
+        imageUrl: dto.imageUrl === undefined ? undefined : emptyToNull(dto.imageUrl),
+        bannerUrl: dto.bannerUrl === undefined ? undefined : emptyToNull(dto.bannerUrl),
+        bannerMobileUrl:
+          dto.bannerMobileUrl === undefined ? undefined : emptyToNull(dto.bannerMobileUrl),
+        iconUrl: dto.iconUrl === undefined ? undefined : emptyToNull(dto.iconUrl),
+        seoContent: dto.seoContent === undefined ? undefined : emptyToNull(dto.seoContent),
         isActive: dto.isActive,
         isFeatured: dto.isFeatured,
         showInMenu: dto.showInMenu,
@@ -643,6 +668,7 @@ export class CatalogAdminService {
         name: true,
         slug: true,
         type: true,
+        description: true,
         isActive: true,
         isFeatured: true,
         isPremium: true,
@@ -664,9 +690,9 @@ export class CatalogAdminService {
         name: dto.name,
         slug,
         type: dto.type ?? 'MANUAL',
-        description: dto.description,
-        imageUrl: dto.imageUrl,
-        bannerUrl: dto.bannerUrl,
+        description: emptyToNull(dto.description),
+        imageUrl: emptyToNull(dto.imageUrl),
+        bannerUrl: emptyToNull(dto.bannerUrl),
         rules: (dto.rules as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         isActive: dto.isActive ?? true,
         isFeatured: dto.isFeatured ?? false,
@@ -694,9 +720,9 @@ export class CatalogAdminService {
         name: dto.name ?? undefined,
         slug,
         type: dto.type,
-        description: dto.description,
-        imageUrl: dto.imageUrl,
-        bannerUrl: dto.bannerUrl,
+        description: dto.description === undefined ? undefined : emptyToNull(dto.description),
+        imageUrl: dto.imageUrl === undefined ? undefined : emptyToNull(dto.imageUrl),
+        bannerUrl: dto.bannerUrl === undefined ? undefined : emptyToNull(dto.bannerUrl),
         ...(dto.rules !== undefined
           ? { rules: (dto.rules as Prisma.InputJsonValue) ?? Prisma.JsonNull }
           : {}),

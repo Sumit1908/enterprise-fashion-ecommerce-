@@ -128,7 +128,7 @@ export function MobileNav({ tree }: { tree: CategoryNode[] }) {
                 <div className="mt-6 space-y-1 border-t border-[var(--color-sand)] pt-4 text-sm">
                   <Link href="/search" className="block py-2.5">Search</Link>
                   <Link href="/wishlist" className="block py-2.5">Wishlist</Link>
-                  <Link href="/account/orders" className="block py-2.5">Orders &amp; account</Link>
+                  <Link href="/account" className="block py-2.5">Account &amp; orders</Link>
                   <Link href="/cart" className="block py-2.5">Cart</Link>
                 </div>
               </div>

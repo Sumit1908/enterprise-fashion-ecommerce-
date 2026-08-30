@@ -51,7 +51,7 @@ class StorefrontController {
   @Get('home')
   async home() {
     const now = new Date();
-    const [sections, banners, testimonials, collections, instagram, lookbooks] = await Promise.all([
+    const [sections, banners, testimonials, collections, instagram, lookbooks, menuCategories] = await Promise.all([
       this.prisma.homeSection.findMany({
         where: {
           isActive: true,
@@ -78,7 +78,21 @@ class StorefrontController {
         take: 4,
         include: { looks: { take: 1, include: { items: { include: { product: { select: CARD_SELECT } } } } } },
       }),
+      // Live top-level categories power the "Shop by Category" grid so the
+      // images stay editable from the admin without re-seeding.
+      this.prisma.category.findMany({
+        where: { parentId: null, isActive: true, showInMenu: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 8,
+        select: { name: true, slug: true, imageUrl: true, bannerUrl: true },
+      }),
     ]);
+
+    const liveCategoryTiles = menuCategories.map((c) => ({
+      label: c.name,
+      imageUrl: c.imageUrl ?? c.bannerUrl,
+      url: `/c/${c.slug}`,
+    }));
 
     const resolved = await Promise.all(
       sections.map(async (section) => {
@@ -111,6 +125,10 @@ class StorefrontController {
           });
         }
 
+        const storedTiles = section.items
+          .filter((i) => !i.productId)
+          .map((i) => ({ label: i.label, imageUrl: i.imageUrl, url: i.url }));
+
         return {
           id: section.id,
           type: section.type,
@@ -119,11 +137,10 @@ class StorefrontController {
           ctaLabel: section.ctaLabel,
           ctaUrl: section.ctaUrl,
           products,
-          tiles: section.items.filter((i) => !i.productId).map((i) => ({
-            label: i.label,
-            imageUrl: i.imageUrl,
-            url: i.url,
-          })),
+          tiles:
+            section.type === 'CATEGORY_GRID' && liveCategoryTiles.length
+              ? liveCategoryTiles
+              : storedTiles,
         };
       }),
     );

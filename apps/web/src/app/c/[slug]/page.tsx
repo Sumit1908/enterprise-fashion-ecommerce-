@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -59,15 +60,37 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   const { items, pagination } = await api.products(qs.toString());
 
   return (
-    <div className="container-wide py-10">
+    <div>
+      {category.bannerUrl && (
+        <div className="relative flex min-h-[36vh] items-end overflow-hidden bg-[var(--color-indigo-deep)] sm:min-h-[44vh]">
+          <Image
+            src={category.bannerUrl}
+            alt={category.name}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="container-wide relative z-10 pb-10 pt-24 text-[var(--color-bone)]">
+            <p className="eyebrow text-[var(--color-accent-soft)]">Collection</p>
+            <h1 className="mt-3 font-display text-4xl sm:text-5xl">{category.name}</h1>
+          </div>
+        </div>
+      )}
+      <div className="container-wide py-10">
       <nav className="text-xs text-[var(--color-ink-soft)]">
         <Link href="/" className="hover:text-[var(--color-ink)]">Home</Link> / <span>{category.name}</span>
       </nav>
       <header className="mt-4 border-b border-[var(--color-sand)] pb-8">
-        <p className="eyebrow">Collection</p>
-        <h1 className="mt-3 font-display text-3xl sm:text-4xl">{category.name}</h1>
+        {!category.bannerUrl && (
+          <>
+            <p className="eyebrow">Collection</p>
+            <h1 className="mt-3 font-display text-3xl sm:text-4xl">{category.name}</h1>
+          </>
+        )}
         {category.description && (
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--color-ink-soft)]">
+          <p className={`${category.bannerUrl ? '' : 'mt-3'} max-w-2xl text-sm leading-relaxed text-[var(--color-ink-soft)]`}>
             {category.description}
           </p>
         )}
@@ -131,6 +154,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
           dangerouslySetInnerHTML={{ __html: category.seoContent }}
         />
       )}
+      </div>
     </div>
   );
 }

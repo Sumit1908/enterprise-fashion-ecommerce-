@@ -15,6 +15,9 @@ import { PricingModule } from './pricing/pricing.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { CartModule } from './cart/cart.module.js';
 import { OrdersModule } from './orders/orders.module.js';
+import { EmailModule } from './email/email.module.js';
+import { NewsletterModule } from './newsletter/newsletter.module.js';
+import { WishlistModule } from './wishlist/wishlist.module.js';
 
 const env = loadEnv();
 
@@ -28,6 +31,7 @@ const env = loadEnv();
     ]),
     PrismaModule,
     CommonModule,
+    EmailModule,
     HealthModule,
     AuthModule,
     MediaModule,
@@ -39,6 +43,8 @@ const env = loadEnv();
     CatalogModule,
     StorefrontModule,
     AdminModule,
+    NewsletterModule,
+    WishlistModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

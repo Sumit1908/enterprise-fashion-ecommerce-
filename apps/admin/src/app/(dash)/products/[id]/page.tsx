@@ -20,8 +20,10 @@ interface ApiProduct {
   careInstructions: string | null;
   brand: { id: string; name: string } | null;
   categories: { categoryId: string }[];
+  collections: { collectionId: string }[];
+  tags: { tag: { name: string } }[];
   media: { url: string }[];
-  options: { name: string; values: { value: string }[] }[];
+  options: { name: string; values: { value: string; hexColor: string | null }[] }[];
   variants: {
     sku: string;
     optionValues: { optionValue: { value: string } }[];
@@ -46,7 +48,28 @@ const FLAG_KEYS = [
   'isExclusive',
 ] as const;
 
+const isColourOption = (name: string) => /colou?r/i.test(name);
+const isSizeOption = (name: string) => /size/i.test(name);
+
 function toForm(p: ApiProduct): ProductFormValue {
+  const sizeOpt = p.options.find((o) => isSizeOption(o.name)) ?? p.options.find((o) => !isColourOption(o.name));
+  const colourOpt = p.options.find((o) => isColourOption(o.name));
+
+  const sizeValues = new Set(sizeOpt?.values.map((x) => x.value) ?? []);
+  const colourValues = new Set(colourOpt?.values.map((x) => x.value) ?? []);
+
+  const stock: Record<string, number> = {};
+  const skus: Record<string, string> = {};
+  for (const variant of p.variants) {
+    const vals = variant.optionValues.map((o) => o.optionValue.value);
+    const size = vals.find((x) => sizeValues.has(x)) ?? null;
+    const colour = vals.find((x) => colourValues.has(x)) ?? null;
+    const key = [size, colour].filter(Boolean).join('||');
+    if (!key) continue;
+    stock[key] = variant.inventory.reduce((sum, i) => sum + i.onHand, 0);
+    skus[key] = variant.sku;
+  }
+
   return {
     id: p.id,
     name: p.name,
@@ -62,13 +85,13 @@ function toForm(p: ApiProduct): ProductFormValue {
     careInstructions: p.careInstructions ?? '',
     flags: Object.fromEntries(FLAG_KEYS.map((k) => [k, p[k]])),
     categoryIds: p.categories.map((c) => c.categoryId),
+    collectionIds: p.collections?.map((c) => c.collectionId) ?? [],
+    tags: (p.tags ?? []).map((t) => t.tag.name).join(', '),
     mediaText: p.media.map((m) => m.url).join('\n'),
-    optionName: p.options[0]?.name ?? 'Size',
-    variants: p.variants.map((variant) => ({
-      sku: variant.sku,
-      value: variant.optionValues[0]?.optionValue.value ?? '',
-      stock: variant.inventory.reduce((sum, i) => sum + i.onHand, 0),
-    })),
+    sizes: (sizeOpt?.values ?? []).map((x) => x.value).join(', '),
+    colours: (colourOpt?.values ?? []).map((x) => ({ name: x.value, hex: x.hexColor ?? '#2f4058' })),
+    stock,
+    skus,
   };
 }
 

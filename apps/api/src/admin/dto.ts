@@ -135,6 +135,8 @@ export class CategoryUpsertDto {
   @IsOptional() @IsEnum(AgeGroup) ageGroup?: AgeGroup;
   @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsString() bannerUrl?: string;
+  @IsOptional() @IsString() bannerMobileUrl?: string;
+  @IsOptional() @IsString() iconUrl?: string;
   @IsOptional() @IsString() seoContent?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsBoolean() isFeatured?: boolean;

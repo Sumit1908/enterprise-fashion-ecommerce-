@@ -10,18 +10,19 @@ export interface CategoryTile {
 }
 
 /**
- * Curated, consistent imagery for the main category doorways. Falls back to the
- * CMS tile image for anything not listed. Kept in the frontend so the storefront
- * presentation stays cohesive without editing catalogue data.
+ * Last-resort placeholder if a category has no image set in the admin. The
+ * real images now come from the API (Category.imageUrl), editable under
+ * Admin → Categories & Collections.
  */
 const IMG = (id: string) =>
   `https://images.unsplash.com/photo-${id}?w=900&q=80&auto=format&fit=crop`;
 
-const CURATED: Record<string, string> = {
+const FALLBACK: Record<string, string> = {
   '/c/men': IMG('1542272604-787c3835535d'),
   '/c/women': IMG('1475178626620-a4d074967452'),
-  '/c/kids': IMG('1604176354204-9268737828e4'),
+  '/c/kids': IMG('1471286174890-9c112ffca5b4'),
 };
+const GENERIC_FALLBACK = IMG('1604176354204-9268737828e4');
 
 export function CategoryShowcase({ tiles }: { tiles: CategoryTile[] }) {
   const items = tiles.filter((t) => t.label && t.url).slice(0, 6);
@@ -36,7 +37,7 @@ export function CategoryShowcase({ tiles }: { tiles: CategoryTile[] }) {
       />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {items.map((tile, i) => {
-          const src = CURATED[tile.url!] ?? tile.imageUrl;
+          const src = tile.imageUrl || FALLBACK[tile.url!] || GENERIC_FALLBACK;
           return (
             <Reveal key={tile.url} delay={i * 60}>
               <Link

@@ -97,6 +97,12 @@ export class CatalogAdminController {
     return this.service.listCategories();
   }
 
+  @Get('categories/:id')
+  @RequirePermissions('category:read')
+  getCategory(@Param('id') id: string) {
+    return this.service.getCategory(id);
+  }
+
   @Post('categories')
   @RequirePermissions('category:create')
   createCategory(@Body() dto: CategoryUpsertDto) {

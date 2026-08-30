@@ -3,15 +3,23 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { storefront, inr, ApiError } from '@/lib/storefront';
+import { useAuth } from '@/lib/auth-context';
 
 type Row = Awaited<ReturnType<typeof storefront.myOrders>>[number];
 
 export default function AccountOrdersPage() {
+  const { user, ready } = useAuth();
   const [orders, setOrders] = useState<Row[] | null>(null);
   const [needAuth, setNeedAuth] = useState(false);
   const [trackNumber, setTrackNumber] = useState('');
 
   useEffect(() => {
+    if (!ready) return;
+    if (!user) {
+      setNeedAuth(true);
+      setOrders([]);
+      return;
+    }
     storefront
       .myOrders()
       .then(setOrders)
@@ -19,11 +27,12 @@ export default function AccountOrdersPage() {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) setNeedAuth(true);
         else setOrders([]);
       });
-  }, []);
+  }, [user, ready]);
 
   return (
     <div className="container-wide max-w-2xl py-12">
-      <h1 className="font-display text-3xl font-semibold">Your orders</h1>
+      <p className="eyebrow">Account</p>
+      <h1 className="mt-3 font-display text-3xl sm:text-4xl">Your orders</h1>
 
       <form
         onSubmit={(e) => {
@@ -42,9 +51,12 @@ export default function AccountOrdersPage() {
       </form>
 
       {needAuth && (
-        <p className="mt-8 rounded-lg bg-[var(--color-bone)] p-4 text-sm text-[var(--color-ink-soft)]">
-          Sign-in isn&apos;t wired into the storefront yet (Phase 4). Guest orders can be tracked with the
-          order number above, using the email from checkout.
+        <p className="mt-8 border border-[var(--color-sand)] bg-[var(--color-paper)] p-4 text-sm text-[var(--color-ink-soft)]">
+          <Link href="/account?next=/account/orders" className="link-underline font-semibold text-[var(--color-ink)]">
+            Sign in
+          </Link>{' '}
+          to see your order history, or track a guest order with the number above and the email
+          used at checkout.
         </p>
       )}
 

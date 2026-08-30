@@ -3,6 +3,7 @@ import { api, type CategoryNode } from '@/lib/api';
 import { CartBadge } from '@/components/cart-badge';
 import { MobileNav } from '@/components/mobile-nav';
 import { SiteNav } from '@/components/site-nav';
+import { AccountIcon, WishlistIcon } from '@/components/header-icons';
 
 async function getTree(): Promise<CategoryNode[]> {
   try {
@@ -55,25 +56,8 @@ export async function SiteHeader() {
                 <path d="m20 20-3.5-3.5" />
               </svg>
             </Link>
-            <Link
-              href="/wishlist"
-              aria-label="Wishlist"
-              className="hidden hover:text-[var(--color-accent)] sm:inline"
-            >
-              <svg viewBox="0 0 24 24" className="h-[1.15rem] w-[1.15rem]" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M12 20.5S3.5 14.7 3.5 8.9A4.4 4.4 0 0 1 12 6.9a4.4 4.4 0 0 1 8.5 2c0 5.8-8.5 11.6-8.5 11.6z" />
-              </svg>
-            </Link>
-            <Link
-              href="/account/orders"
-              aria-label="Account"
-              className="hidden hover:text-[var(--color-accent)] sm:inline"
-            >
-              <svg viewBox="0 0 24 24" className="h-[1.15rem] w-[1.15rem]" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <circle cx="12" cy="8" r="3.5" />
-                <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
-              </svg>
-            </Link>
+            <WishlistIcon />
+            <AccountIcon />
             <CartBadge />
           </div>
         </div>
