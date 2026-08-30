@@ -1,6 +1,7 @@
 import './bootstrap-env.js';
 import 'reflect-metadata';
 import { join } from 'node:path';
+import type { IncomingMessage } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -30,8 +31,15 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser(env.COOKIE_SECRET));
-  // Bulk CSV imports can be large.
-  app.use(json({ limit: '25mb' }));
+  // Bulk CSV imports can be large. Keep the raw JSON body for webhook signature checks.
+  app.use(
+    json({
+      limit: '25mb',
+      verify: (req: IncomingMessage & { rawBody?: Buffer }, _res, buf: Buffer) => {
+        req.rawBody = Buffer.from(buf);
+      },
+    }),
+  );
   app.use(urlencoded({ extended: true, limit: '25mb' }));
   app.enableCors({
     origin: env.CORS_ALLOWED_ORIGINS,

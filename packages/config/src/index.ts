@@ -56,6 +56,8 @@ export const envSchema = z.object({
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  // Fake gateway for local/CI testing. Auto-disabled in production regardless.
+  PAYMENTS_MOCK_ENABLED: bool.optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   PHONEPE_MERCHANT_ID: z.string().optional(),

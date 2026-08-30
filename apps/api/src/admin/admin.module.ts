@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -19,13 +20,18 @@ import { CatalogAdminController } from './catalog-admin.controller.js';
 import { CatalogAdminService } from './catalog-admin.service.js';
 import { InventoryAdminController } from './inventory-admin.controller.js';
 import { InventoryAdminService } from './inventory-admin.service.js';
+import { OrdersService } from '../orders/orders.service.js';
+import { CurrentUser, type AuthUser } from '../common/decorators.js';
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin')
 class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ordersService: OrdersService,
+  ) {}
 
   @Get('overview')
   @RequirePermissions('report:read')
@@ -150,6 +156,26 @@ class AdminController {
       this.prisma.order.count({ where }),
     ]);
     return { items, total, page: Number(page), pageSize: take };
+  }
+
+  @Get('orders/:id')
+  @RequirePermissions('order:read')
+  orderDetail(@Param('id') id: string) {
+    return this.ordersService.adminGet(id);
+  }
+
+  @Patch('orders/:id/status')
+  @RequirePermissions('order:update')
+  setOrderStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @Body('note') note: string | undefined,
+    @CurrentUser() user: AuthUser,
+  ) {
+    if (!(status in OrderStatus)) {
+      throw new BadRequestException('Invalid order status');
+    }
+    return this.ordersService.adminSetStatus(id, status as OrderStatus, note, user?.id);
   }
 
   @Get('audit')

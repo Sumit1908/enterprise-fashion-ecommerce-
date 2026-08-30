@@ -11,6 +11,10 @@ import { AdminModule } from './admin/admin.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MediaModule } from './media/media.module.js';
 import { SearchModule } from './search/search.module.js';
+import { PricingModule } from './pricing/pricing.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
+import { CartModule } from './cart/cart.module.js';
+import { OrdersModule } from './orders/orders.module.js';
 
 const env = loadEnv();
 
@@ -28,6 +32,10 @@ const env = loadEnv();
     AuthModule,
     MediaModule,
     SearchModule,
+    PricingModule,
+    PaymentsModule,
+    CartModule,
+    OrdersModule,
     CatalogModule,
     StorefrontModule,
     AdminModule,
