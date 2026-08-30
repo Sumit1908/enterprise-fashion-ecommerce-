@@ -10,7 +10,10 @@ const METHOD_LABELS: Record<string, { label: string; description: string }> = {
   CARD: { label: 'Credit / Debit Card', description: 'Visa, Mastercard, RuPay, Amex' },
   UPI: { label: 'UPI', description: 'Google Pay, PhonePe, Paytm & more' },
   NETBANKING: { label: 'Net Banking', description: 'All major banks' },
-  RAZORPAY: { label: 'Card / UPI / Net Banking', description: 'Secure payment via Razorpay' },
+  RAZORPAY: {
+    label: 'Pay Online',
+    description: 'Card, UPI, Net Banking & Wallets — secured & verified',
+  },
   WALLET: { label: 'Store Wallet', description: 'Use your Slay Jeans balance' },
 };
 

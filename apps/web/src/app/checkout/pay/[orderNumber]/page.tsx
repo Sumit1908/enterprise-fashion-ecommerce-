@@ -1,40 +1,52 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, use, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { storefront, inr, type OrderView } from '@/lib/storefront';
 import { useCart } from '@/lib/cart-context';
+
+export default function MockPayPageWrapper({ params }: { params: Promise<{ orderNumber: string }> }) {
+  return (
+    <Suspense fallback={<div className="container-wide py-20 text-center text-sm">Loading…</div>}>
+      <MockPayPage params={params} />
+    </Suspense>
+  );
+}
 
 /**
  * Sandbox payment page for the mock gateway (local dev / no real credentials).
  * A real gateway (Razorpay) opens its own hosted widget from the checkout page.
  */
-export default function MockPayPage({ params }: { params: Promise<{ orderNumber: string }> }) {
+function MockPayPage({ params }: { params: Promise<{ orderNumber: string }> }) {
   const { orderNumber } = use(params);
   const router = useRouter();
+  const email = useSearchParams().get('email') ?? undefined;
   const { refresh } = useCart();
   const [order, setOrder] = useState<OrderView | null>(null);
   const [busy, setBusy] = useState<null | 'success' | 'failure'>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const orderUrl = (extra = '') =>
+    `/order/${orderNumber}${email ? `?email=${encodeURIComponent(email)}` : ''}${extra}`;
+
   useEffect(() => {
     storefront
-      .getOrder(orderNumber)
+      .getOrder(orderNumber, email)
       .then(setOrder)
-      .catch(() => setError('Could not load this order.'));
-  }, [orderNumber]);
+      .catch(() => undefined);
+  }, [orderNumber, email]);
 
   async function complete(outcome: 'success' | 'failure') {
     setBusy(outcome);
     setError(null);
     try {
-      await storefront.verifyPayment({ orderNumber, mockOutcome: outcome });
+      await storefront.verifyPayment({ orderNumber, email, mockOutcome: outcome });
       await refresh();
-      router.push(`/order/${orderNumber}`);
+      router.push(orderUrl());
     } catch (e) {
       if (outcome === 'failure') {
         await refresh();
-        router.push(`/order/${orderNumber}?payment=failed`);
+        router.push(orderUrl(email ? '&payment=failed' : '?payment=failed'));
         return;
       }
       setError((e as Error).message);

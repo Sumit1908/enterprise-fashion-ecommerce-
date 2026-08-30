@@ -17,29 +17,30 @@ function Hero({ data }: { data: HomeResponse }) {
   const hero = data.banners.find((b) => b.placement === 'HOME_HERO');
   if (!hero) return null;
   return (
-    <section className="relative flex min-h-[70vh] items-center overflow-hidden">
+    <section className="relative flex min-h-[78vh] items-center overflow-hidden sm:min-h-[70vh]">
       {hero.imageUrl && (
         <Image
           src={hero.imageUrl}
           alt={hero.headline ?? hero.title}
           fill
           priority
+          sizes="100vw"
           className="object-cover"
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/55 to-black/10" />
-      <div className="container-wide relative z-10 text-white">
-        <p className="text-sm uppercase tracking-[0.2em] text-white/80">{hero.title}</p>
-        <h1 className="mt-3 max-w-2xl font-display text-4xl font-semibold sm:text-6xl">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 sm:bg-gradient-to-r sm:from-black/60 sm:to-transparent" />
+      <div className="container-wide relative z-10 py-16 text-white">
+        <p className="text-xs uppercase tracking-[0.2em] text-white/80 sm:text-sm">{hero.title}</p>
+        <h1 className="mt-3 max-w-xl font-display text-3xl font-semibold leading-[1.1] sm:text-5xl lg:text-6xl">
           {hero.headline}
         </h1>
         {hero.subheadline && (
-          <p className="mt-4 max-w-lg text-lg text-white/80">{hero.subheadline}</p>
+          <p className="mt-4 max-w-md text-base text-white/85 sm:text-lg">{hero.subheadline}</p>
         )}
         {hero.ctaUrl && (
           <Link
             href={hero.ctaUrl}
-            className="mt-8 inline-block rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent)] hover:text-white"
+            className="mt-7 inline-block rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-accent)] hover:text-white"
           >
             {hero.ctaLabel ?? 'Shop now'}
           </Link>
@@ -75,11 +76,11 @@ export default async function HomePage() {
     <>
       <Hero data={data} />
       <section className="border-y border-[var(--color-sand)] bg-[var(--color-paper)]">
-        <div className="container-wide grid grid-cols-2 divide-x divide-[var(--color-sand)] md:grid-cols-4">
+        <div className="container-wide grid grid-cols-2 gap-y-4 py-6 sm:divide-x sm:divide-[var(--color-sand)] sm:py-0 md:grid-cols-4">
           {PROMISES.map(([title, sub]) => (
-            <div key={title} className="px-4 py-6 text-center">
-              <p className="text-sm font-semibold">{title}</p>
-              <p className="mt-1 text-xs text-[var(--color-ink-soft)]">{sub}</p>
+            <div key={title} className="px-3 text-center sm:py-6">
+              <p className="text-xs font-semibold sm:text-sm">{title}</p>
+              <p className="mt-1 text-[11px] text-[var(--color-ink-soft)] sm:text-xs">{sub}</p>
             </div>
           ))}
         </div>

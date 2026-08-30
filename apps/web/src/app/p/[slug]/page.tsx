@@ -63,35 +63,42 @@ export default async function ProductPage({ params }: PageProps) {
     },
   };
 
+  const gallery = product.media.slice(0, 6);
+
   return (
-    <div className="container-wide py-10">
+    <div className="container-wide py-6 pb-24 sm:py-10 lg:pb-10">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <nav className="text-xs text-[var(--color-ink-soft)]">
-        <Link href="/">Home</Link>
+      <nav className="flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--color-ink-soft)]">
+        <Link href="/" className="hover:text-[var(--color-ink)]">
+          Home
+        </Link>
         {product.categories[0] && (
           <>
-            {' / '}
-            <Link href={`/c/${product.categories[0].category.slug}`}>
+            <span aria-hidden>/</span>
+            <Link
+              href={`/c/${product.categories[0].category.slug}`}
+              className="hover:text-[var(--color-ink)]"
+            >
               {product.categories[0].category.name}
             </Link>
           </>
         )}
-        {' / '}
-        <span>{product.name}</span>
+        <span aria-hidden>/</span>
+        <span className="text-[var(--color-ink)]">{product.name}</span>
       </nav>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-2">
-        <div className="grid grid-cols-2 gap-3">
-          {product.media.map((m, i) => (
+      <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-12">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {gallery.map((m, i) => (
             <div
               key={i}
               className={`relative overflow-hidden rounded-lg bg-[var(--color-sand)] ${
-                i === 0 ? 'col-span-2 aspect-[4/5]' : 'aspect-square'
-              }`}
+                gallery.length > 1 && i === 0 ? 'sm:col-span-2' : ''
+              } aspect-[4/5]`}
             >
               <Image
                 src={m.url}
@@ -111,11 +118,12 @@ export default async function ProductPage({ params }: PageProps) {
               {product.brand.name}
             </p>
           )}
-          <h1 className="mt-1 font-display text-3xl font-semibold">{product.name}</h1>
+          <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">{product.name}</h1>
 
           {product.ratingCount > 0 && (
             <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-              ★ {product.ratingAverage.toFixed(1)} · {product._count.reviews} reviews
+              <span className="text-[var(--color-accent)]">★</span> {product.ratingAverage.toFixed(1)}
+              {product.ratingCount > 0 ? ` (${product.ratingCount})` : ''}
             </p>
           )}
 

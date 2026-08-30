@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { api, type CategoryNode } from '@/lib/api';
 import { CartBadge } from '@/components/cart-badge';
+import { MobileNav } from '@/components/mobile-nav';
 
 async function getNav(): Promise<CategoryNode[]> {
   try {
     const tree = await api.categories();
-    return tree.filter((c) => c.showInMenu).slice(0, 8);
+    return tree.filter((c) => c.showInMenu && !c.parentId).slice(0, 7);
   } catch {
     return [];
   }
@@ -15,12 +16,18 @@ export async function SiteHeader() {
   const nav = await getNav();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-sand)] bg-[var(--color-paper)]/90 backdrop-blur">
-      <div className="bg-[var(--color-ink)] text-center text-xs tracking-wide text-[var(--color-bone)]">
-        <p className="py-2">Free shipping over ₹999 · Easy 7-day returns · COD available</p>
+    <header className="sticky top-0 z-50 border-b border-[var(--color-sand)] bg-[var(--color-paper)]/95 backdrop-blur">
+      <div className="bg-[var(--color-ink)] text-center text-[11px] tracking-wide text-[var(--color-bone)] sm:text-xs">
+        <p className="truncate px-3 py-2">
+          Free shipping over ₹999 · Easy 7-day returns · COD available
+        </p>
       </div>
-      <div className="container-wide flex h-16 items-center justify-between gap-6">
-        <Link href="/" className="font-display text-2xl font-semibold">
+      <div className="container-wide flex h-16 items-center justify-between gap-3">
+        <div className="flex items-center gap-1 lg:hidden">
+          <MobileNav nav={nav} />
+        </div>
+
+        <Link href="/" className="font-display text-xl font-semibold sm:text-2xl">
           Slay<span className="text-[var(--color-accent)]">Jeans</span>
         </Link>
 
@@ -39,11 +46,19 @@ export async function SiteHeader() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-4 text-sm">
-          <Link href="/search" aria-label="Search" className="hover:text-[var(--color-accent)]">
+        <div className="flex items-center gap-3 text-sm sm:gap-4">
+          <Link
+            href="/search"
+            aria-label="Search"
+            className="hidden hover:text-[var(--color-accent)] sm:inline"
+          >
             Search
           </Link>
-          <Link href="/account/orders" aria-label="Account" className="hover:text-[var(--color-accent)]">
+          <Link
+            href="/account/orders"
+            aria-label="Account"
+            className="hidden hover:text-[var(--color-accent)] sm:inline"
+          >
             Account
           </Link>
           <CartBadge />

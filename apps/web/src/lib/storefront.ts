@@ -218,12 +218,13 @@ export const storefront = {
     }),
   verifyPayment: (body: {
     orderNumber: string;
+    email?: string;
     providerOrderId?: string;
     providerPaymentId?: string;
     signature?: string;
     mockOutcome?: 'success' | 'failure';
   }) => request<{ status: string; orderNumber: string }>('/checkout/verify', { method: 'POST', body: JSON.stringify(body) }),
-  retryPayment: (body: { orderNumber: string; paymentMethod: string }) =>
+  retryPayment: (body: { orderNumber: string; email?: string; paymentMethod: string }) =>
     request<{ order: OrderView; payment: PaymentIntent }>('/checkout/retry', {
       method: 'POST',
       body: JSON.stringify(body),

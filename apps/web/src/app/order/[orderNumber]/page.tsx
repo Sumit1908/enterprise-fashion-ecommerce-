@@ -39,11 +39,14 @@ function OrderPage({ params }: { params: Promise<{ orderNumber: string }> }) {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
+  const emailParam = search.get('email') ?? undefined;
+
   const load = useCallback(
     async (withEmail?: string) => {
       try {
         setOrder(await storefront.getOrder(orderNumber, withEmail));
         setNeedEmail(false);
+        setError(null);
       } catch (e) {
         if (e instanceof ApiError && e.status === 403) setNeedEmail(true);
         else setError(e instanceof ApiError ? e.message : 'Could not load this order.');
@@ -53,9 +56,11 @@ function OrderPage({ params }: { params: Promise<{ orderNumber: string }> }) {
   );
 
   useEffect(() => {
-    void load();
+    // The order-confirmation redirect / emailed link carries ?email=…; the
+    // just-placed guest also has a cart token that proves ownership.
+    void load(emailParam);
     void refresh();
-  }, [load, refresh]);
+  }, [load, refresh, emailParam]);
 
   if (needEmail) {
     return (
@@ -103,8 +108,8 @@ function OrderPage({ params }: { params: Promise<{ orderNumber: string }> }) {
   async function retryCod() {
     setRetrying(true);
     try {
-      await storefront.retryPayment({ orderNumber, paymentMethod: 'COD' });
-      await load();
+      await storefront.retryPayment({ orderNumber, email: emailParam, paymentMethod: 'COD' });
+      await load(emailParam);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -135,7 +140,11 @@ function OrderPage({ params }: { params: Promise<{ orderNumber: string }> }) {
           {paymentPending && (
             <div className="mt-4 flex flex-col items-center gap-2">
               <button
-                onClick={() => router.push(`/checkout/pay/${order.orderNumber}`)}
+                onClick={() =>
+                  router.push(
+                    `/checkout/pay/${order.orderNumber}${emailParam ? `?email=${encodeURIComponent(emailParam)}` : ''}`,
+                  )
+                }
                 className="rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-semibold text-white"
               >
                 Retry payment

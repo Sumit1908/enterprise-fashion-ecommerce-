@@ -186,15 +186,39 @@ async function seedSuperAdmin() {
   console.log(`  Super admin: ${email}  (password: ${password})`);
 }
 
+const U = (id: string, w = 900) =>
+  `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`;
+
+const CATEGORY_IMAGE: Record<string, string> = {
+  Men: U('1441984904996-e0b6ba687e04'),
+  Women: U('1509631179647-0177331693ae'),
+  Kids: U('1518831959646-742c3a14ebf7'),
+  Footwear: U('1560769629-975ec94e6a86'),
+  Watches: U('1483118714900-540cf339fd46'),
+  Bags: U('1490114538077-0a7f8cb49891'),
+  Belts: U('1490114538077-0a7f8cb49891'),
+  Wallets: U('1490114538077-0a7f8cb49891'),
+  Sunglasses: U('1490114538077-0a7f8cb49891'),
+  Accessories: U('1490114538077-0a7f8cb49891'),
+};
+
+const COLLECTION_IMAGE: Record<string, string> = {
+  'New Arrivals': U('1604176354204-9268737828e4'),
+  'Premium Collection': U('1584865288642-42078afe6942'),
+  Sale: U('1560243563-062bfc001d68'),
+  'Summer Edit': U('1582418702059-97ebafb35d09'),
+};
+
 async function seedCatalogStructure() {
   for (const [i, top] of CATEGORY_TREE.entries()) {
+    const image = CATEGORY_IMAGE[top.name] ?? null;
     const parent = await prisma.category.upsert({
       where: { slug: slugify(top.name) },
       create: {
         name: top.name, slug: slugify(top.name), gender: top.gender, ageGroup: top.ageGroup,
-        isFeatured: true, sortOrder: i, path: slugify(top.name),
+        isFeatured: true, sortOrder: i, path: slugify(top.name), imageUrl: image,
       },
-      update: { gender: top.gender, ageGroup: top.ageGroup },
+      update: { gender: top.gender, ageGroup: top.ageGroup, imageUrl: image },
     });
     for (const [j, child] of (top.children ?? []).entries()) {
       const childCat = await prisma.category.upsert({
@@ -226,10 +250,11 @@ async function seedCatalogStructure() {
     { name: 'Sale', isFeatured: true },
     { name: 'Summer Edit', isSeasonal: true },
   ]) {
+    const img = COLLECTION_IMAGE[c.name] ?? null;
     await prisma.collection.upsert({
       where: { slug: slugify(c.name) },
-      create: { name: c.name, slug: slugify(c.name), isActive: true, ...c },
-      update: {},
+      create: { name: c.name, slug: slugify(c.name), isActive: true, imageUrl: img, ...c },
+      update: { imageUrl: img },
     });
   }
 
@@ -360,17 +385,42 @@ async function seedHomepage() {
     }
   }
 
-  const existingHero = await prisma.banner.findFirst({ where: { placement: 'HOME_HERO' } });
-  if (!existingHero) {
-    await prisma.banner.create({
-      data: {
-        title: 'Autumn Drop', placement: 'HOME_HERO',
-        headline: 'The Autumn Denim Drop', subheadline: 'New washes. New fits. Limited runs.',
-        ctaLabel: 'Shop New In', ctaUrl: '/collections/new-arrivals',
-        imageUrl: 'https://images.unsplash.com/photo-1520975916090-3105956dac38?w=1920',
-        isActive: true, position: 0,
-      },
+  // Populate the "Shop by Category" grid with the top categories.
+  const catGrid = await prisma.homeSection.findFirst({ where: { type: 'CATEGORY_GRID' } });
+  if (catGrid) {
+    const tops = await prisma.category.findMany({
+      where: { parentId: null, isActive: true },
+      orderBy: { sortOrder: 'asc' },
+      take: 6,
     });
+    await prisma.homeSectionItem.deleteMany({ where: { sectionId: catGrid.id } });
+    await prisma.homeSectionItem.createMany({
+      data: tops.map((c, position) => ({
+        sectionId: catGrid.id,
+        label: c.name,
+        url: `/c/${c.slug}`,
+        imageUrl: c.imageUrl,
+        position,
+      })),
+    });
+  }
+
+  const heroData = {
+    title: 'Autumn Drop',
+    headline: 'The Autumn Denim Drop',
+    subheadline: 'New washes. New fits. Limited runs.',
+    ctaLabel: 'Shop New In',
+    ctaUrl: '/collections/new-arrivals',
+    imageUrl:
+      'https://images.unsplash.com/photo-1582418702059-97ebafb35d09?w=1920&q=80&auto=format&fit=crop',
+    isActive: true,
+    position: 0,
+  };
+  const existingHero = await prisma.banner.findFirst({ where: { placement: 'HOME_HERO' } });
+  if (existingHero) {
+    await prisma.banner.update({ where: { id: existingHero.id }, data: heroData });
+  } else {
+    await prisma.banner.create({ data: { placement: 'HOME_HERO', ...heroData } });
   }
   console.log(`  Homepage: ${sections.length} sections + hero banner`);
 }
@@ -391,13 +441,58 @@ async function seedDemoProducts() {
   const womenJeans = await prisma.category.findUniqueOrThrow({ where: { slug: 'women-jeans' } });
   const apparelTax = await prisma.taxClass.findUniqueOrThrow({ where: { name: 'Apparel 5%' } });
 
+  // Curated Unsplash denim photography (verified reachable).
+  const IMG = (id: string, w = 1400) => `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`;
+  const MEN_IMAGES = [
+    IMG('1542272604-787c3835535d'),
+    IMG('1604176354204-9268737828e4'),
+    IMG('1560243563-062bfc001d68'),
+  ];
+  const WOMEN_IMAGES = [
+    IMG('1475178626620-a4d074967452'),
+    IMG('1541099649105-f69ad21f3246'),
+    IMG('1598554747436-c9293d6a588f'),
+    IMG('1516762689617-e1cffcef479d'),
+  ];
+  const rotate = <T,>(arr: T[], by: number) => arr.map((_, i) => arr[(i + by) % arr.length]!);
+
   const demo = [
-    { name: 'Slim Fit Stretch Jeans - Rinse Wash', cat: menJeans, mrp: 3499, sale: 2099, gender: Gender.MEN, flags: { isBestSeller: true, isFeatured: true } },
-    { name: 'Tapered Selvedge Jeans - Raw Indigo', cat: menJeans, mrp: 5999, sale: 4499, gender: Gender.MEN, flags: { isNewArrival: true, isExclusive: true } },
-    { name: 'Relaxed Straight Jeans - Mid Blue', cat: menJeans, mrp: 3299, sale: 1899, gender: Gender.MEN, flags: { isTrending: true } },
-    { name: 'High-Rise Skinny Jeans - Black', cat: womenJeans, mrp: 3199, sale: 1999, gender: Gender.WOMEN, flags: { isBestSeller: true } },
-    { name: 'Wide-Leg Cropped Jeans - Ecru', cat: womenJeans, mrp: 3799, sale: 2499, gender: Gender.WOMEN, flags: { isNewArrival: true, isStaffPick: true } },
-    { name: 'Mom Fit Jeans - Vintage Wash', cat: womenJeans, mrp: 3599, sale: 2299, gender: Gender.WOMEN, flags: { isTrending: true, isHot: true } },
+    {
+      name: 'Slim Fit Stretch Jeans - Rinse Wash', cat: menJeans, mrp: 3499, sale: 2099, gender: Gender.MEN,
+      flags: { isBestSeller: true, isFeatured: true },
+      short: 'Our everyday slim — mid-weight stretch denim in a clean rinse wash.',
+      long: '<p>The one you reach for on repeat. Cut close through the thigh with a touch of stretch so it moves with you, finished in a deep rinse wash with tonal stitching and branded hardware.</p><p>Model is 6\'1" and wears a 32.</p>',
+    },
+    {
+      name: 'Tapered Selvedge Jeans - Raw Indigo', cat: menJeans, mrp: 5999, sale: 4499, gender: Gender.MEN,
+      flags: { isNewArrival: true, isExclusive: true },
+      short: 'Japanese selvedge denim, tapered leg, raw indigo that fades to your life.',
+      long: '<p>Woven on shuttle looms for a dense, characterful hand-feel. Left raw so the indigo breaks in around the knees and pockets over time. A tapered leg keeps it modern.</p><p>13.5oz · unwashed · expect ~1" shrink on first wash.</p>',
+    },
+    {
+      name: 'Relaxed Straight Jeans - Mid Blue', cat: menJeans, mrp: 3299, sale: 1899, gender: Gender.MEN,
+      flags: { isTrending: true },
+      short: 'A roomy straight leg in a soft mid-blue wash. Easy all day.',
+      long: '<p>Sits at the natural waist with a relaxed thigh and a straight, unbroken line to the hem. Garment-washed for a lived-in softness from the first wear.</p>',
+    },
+    {
+      name: 'High-Rise Skinny Jeans - Black', cat: womenJeans, mrp: 3199, sale: 1999, gender: Gender.WOMEN,
+      flags: { isBestSeller: true },
+      short: 'Sculpting high-rise skinny in a true, non-fade black.',
+      long: '<p>High-stretch power denim that holds its shape from morning to midnight. A high rise smooths the waist; a skinny leg tucks cleanly into boots.</p>',
+    },
+    {
+      name: 'Wide-Leg Cropped Jeans - Ecru', cat: womenJeans, mrp: 3799, sale: 2499, gender: Gender.WOMEN,
+      flags: { isNewArrival: true, isStaffPick: true },
+      short: 'Rigid ecru denim, cropped wide leg, a clean raw hem.',
+      long: '<p>Architectural and elevated. A firm, non-stretch denim in warm ecru holds a wide, cropped column that hits just above the ankle. Pair with a loafer or a chunky sandal.</p>',
+    },
+    {
+      name: 'Mom Fit Jeans - Vintage Wash', cat: womenJeans, mrp: 3599, sale: 2299, gender: Gender.WOMEN,
+      flags: { isTrending: true, isHot: true },
+      short: 'The \'90s mom fit — tapered, high-waisted, softly faded.',
+      long: '<p>A nostalgic high waist and a relaxed hip taper to a slightly cropped ankle. Authentic vintage-wash denim with subtle whiskering and a worn-in feel.</p>',
+    },
   ];
 
   const sizes = ['28', '30', '32', '34', '36'];
@@ -409,8 +504,8 @@ async function seedDemoProducts() {
         name: d.name, slug, status: ProductStatus.ACTIVE, publishedAt: new Date(),
         brandId: brandRecords[i % brandRecords.length]!.id,
         gender: d.gender, ageGroup: AgeGroup.ADULT,
-        shortDescription: 'Premium denim with a comfortable stretch and a clean finish.',
-        description: '<p>Cut from mid-weight denim with a touch of stretch for all-day comfort. Five-pocket styling, branded hardware, and a hand-finished wash.</p>',
+        shortDescription: d.short,
+        description: d.long,
         mrp: d.mrp, salePrice: d.sale, costPrice: Math.round(d.sale * 0.45),
         taxClassId: apparelTax.id,
         fabricDetails: '98% Cotton, 2% Elastane',
@@ -420,7 +515,10 @@ async function seedDemoProducts() {
         soldCount: 40 + i * 25, viewCount: 200 + i * 90,
         ...d.flags,
       },
-      update: { salePrice: d.sale, mrp: d.mrp, status: ProductStatus.ACTIVE },
+      update: {
+        salePrice: d.sale, mrp: d.mrp, status: ProductStatus.ACTIVE,
+        shortDescription: d.short, description: d.long,
+      },
     });
 
     await prisma.productCategory.upsert({
@@ -429,12 +527,17 @@ async function seedDemoProducts() {
       update: {},
     });
 
+    const pool = d.gender === Gender.MEN ? MEN_IMAGES : WOMEN_IMAGES;
+    const images = rotate(pool, i).slice(0, 3);
     await prisma.productMedia.deleteMany({ where: { productId: product.id } });
     await prisma.productMedia.createMany({
-      data: [
-        { productId: product.id, url: `https://images.unsplash.com/photo-1542272604-787c3835535d?w=1200&sig=${i}`, position: 0, type: 'IMAGE' },
-        { productId: product.id, url: `https://images.unsplash.com/photo-1548883354-94bcfe321cbb?w=1200&sig=${i}`, position: 1, type: 'IMAGE' },
-      ],
+      data: images.map((url, position) => ({
+        productId: product.id,
+        url,
+        alt: `${d.name} — view ${position + 1}`,
+        position,
+        type: 'IMAGE' as const,
+      })),
     });
 
     const sizeOption = await prisma.productOption.upsert({

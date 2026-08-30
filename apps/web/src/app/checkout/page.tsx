@@ -146,20 +146,26 @@ export default function CheckoutPage() {
       });
 
       await refresh();
+      const orderUrl = `/order/${order.orderNumber}?email=${encodeURIComponent(email)}`;
 
       if (!payment.requiresClientAction) {
-        router.push(`/order/${order.orderNumber}`);
+        router.push(orderUrl);
         return;
       }
       if (payment.provider === 'mock' && payment.clientConfig?.payUrl) {
-        router.push(String(payment.clientConfig.payUrl));
+        router.push(`${String(payment.clientConfig.payUrl)}?email=${encodeURIComponent(email)}`);
         return;
       }
       if (payment.provider === 'razorpay') {
-        await payWithRazorpay(order.orderNumber, payment, { email, contact: addr.phone, name: addr.fullName }, router);
+        await payWithRazorpay(
+          order.orderNumber,
+          payment,
+          { email, contact: addr.phone, name: addr.fullName },
+          router,
+        );
         return;
       }
-      router.push(`/order/${order.orderNumber}`);
+      router.push(orderUrl);
     } catch (e) {
       setError(
         e instanceof ApiError
@@ -404,6 +410,8 @@ async function payWithRazorpay(
   await loadScript('https://checkout.razorpay.com/v1/checkout.js');
   if (!window.Razorpay) throw new Error('Could not load the payment window');
   const cfg = payment.clientConfig ?? {};
+  const orderUrl = (extra = '') =>
+    `/order/${orderNumber}?email=${encodeURIComponent(prefill.email)}${extra}`;
   const rzp = new window.Razorpay({
     key: cfg.keyId,
     order_id: payment.providerOrderId,
@@ -411,7 +419,12 @@ async function payWithRazorpay(
     currency: payment.currency,
     name: cfg.name ?? 'Slay Jeans',
     prefill,
-    handler: async (resp: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+    theme: { color: '#14110f' },
+    handler: async (resp: {
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
+    }) => {
       try {
         await storefront.verifyPayment({
           orderNumber,
@@ -419,12 +432,12 @@ async function payWithRazorpay(
           providerPaymentId: resp.razorpay_payment_id,
           signature: resp.razorpay_signature,
         });
-        router.push(`/order/${orderNumber}`);
+        router.push(orderUrl());
       } catch {
-        router.push(`/order/${orderNumber}?payment=failed`);
+        router.push(orderUrl('&payment=failed'));
       }
     },
-    modal: { ondismiss: () => router.push(`/order/${orderNumber}?payment=pending`) },
+    modal: { ondismiss: () => router.push(orderUrl('&payment=pending')) },
   });
   rzp.open();
 }

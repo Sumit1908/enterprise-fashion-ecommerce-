@@ -373,7 +373,7 @@ export class OrdersService {
   }
 
   async verifyFromClient(
-    ctx: CartContext,
+    ctx: CartContext & { email?: string },
     input: {
       orderNumber: string;
       providerOrderId?: string;
@@ -443,7 +443,11 @@ export class OrdersService {
     return { received: true, handled: true, event: result.event };
   }
 
-  async retryPayment(ctx: CartContext, orderNumber: string, method: PaymentMethod) {
+  async retryPayment(
+    ctx: CartContext & { email?: string },
+    orderNumber: string,
+    method: PaymentMethod,
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { orderNumber },
       include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },

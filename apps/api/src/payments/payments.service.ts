@@ -34,15 +34,48 @@ export class PaymentsService {
     return this.providers.filter((p) => p.isAvailable());
   }
 
-  /** PaymentMethod values the storefront may offer right now. */
+  /**
+   * PaymentMethod values the storefront should offer. When a single gateway
+   * (Razorpay / the sandbox) covers card + UPI + net-banking, we surface just one
+   * "pay online" entry instead of four near-identical options.
+   */
   enabledMethods(configuredMethods: string[]): PaymentMethod[] {
     const supported = new Set<PaymentMethod>();
     for (const provider of this.availableProviders()) {
       for (const m of provider.methods) supported.add(m);
     }
-    return configuredMethods.filter((m): m is PaymentMethod =>
-      supported.has(m as PaymentMethod),
+
+    const gatewayProvider = this.availableProviders().find(
+      (p) => p.id === 'razorpay' || p.id === 'mock',
     );
+    const gatewayCovers = new Set<PaymentMethod>(gatewayProvider?.methods ?? []);
+
+    const result: PaymentMethod[] = [];
+    for (const m of configuredMethods as PaymentMethod[]) {
+      if (!supported.has(m)) continue;
+      // Fold CARD / UPI / NETBANKING into the single RAZORPAY entry when the same
+      // gateway serves all of them.
+      if (
+        m !== 'RAZORPAY' &&
+        m !== 'COD' &&
+        m !== 'WALLET' &&
+        gatewayCovers.has(m) &&
+        gatewayCovers.has('RAZORPAY')
+      ) {
+        continue;
+      }
+      result.push(m);
+    }
+    // Surface the online-gateway entry even if the store's list didn't name
+    // RAZORPAY explicitly (it only listed CARD/UPI/…).
+    if (
+      gatewayProvider &&
+      !result.includes('RAZORPAY') &&
+      configuredMethods.some((m) => gatewayCovers.has(m as PaymentMethod) && m !== 'COD')
+    ) {
+      result.unshift('RAZORPAY');
+    }
+    return result;
   }
 
   providerFor(method: PaymentMethod): PaymentProvider {

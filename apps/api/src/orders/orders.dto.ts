@@ -47,6 +47,7 @@ export class PlaceOrderDto {
 
 export class VerifyPaymentDto {
   @IsString() orderNumber!: string;
+  @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() providerOrderId?: string;
   @IsOptional() @IsString() providerPaymentId?: string;
   @IsOptional() @IsString() signature?: string;
@@ -55,6 +56,7 @@ export class VerifyPaymentDto {
 
 export class RetryPaymentDto {
   @IsString() orderNumber!: string;
+  @IsOptional() @IsEmail() email?: string;
   @IsIn(['COD', 'CARD', 'UPI', 'NETBANKING', 'RAZORPAY'])
   paymentMethod!: 'COD' | 'CARD' | 'UPI' | 'NETBANKING' | 'RAZORPAY';
 }

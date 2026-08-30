@@ -70,13 +70,16 @@ export class CheckoutController {
     @Headers('x-cart-token') token: string,
     @Body() dto: VerifyPaymentDto,
   ) {
-    return this.orders.verifyFromClient(this.ctx(user, token), {
-      orderNumber: dto.orderNumber,
-      providerOrderId: dto.providerOrderId,
-      providerPaymentId: dto.providerPaymentId,
-      signature: dto.signature,
-      mockOutcome: dto.mockOutcome,
-    });
+    return this.orders.verifyFromClient(
+      { ...this.ctx(user, token), email: dto.email },
+      {
+        orderNumber: dto.orderNumber,
+        providerOrderId: dto.providerOrderId,
+        providerPaymentId: dto.providerPaymentId,
+        signature: dto.signature,
+        mockOutcome: dto.mockOutcome,
+      },
+    );
   }
 
   @Post('retry')
@@ -85,6 +88,10 @@ export class CheckoutController {
     @Headers('x-cart-token') token: string,
     @Body() dto: RetryPaymentDto,
   ) {
-    return this.orders.retryPayment(this.ctx(user, token), dto.orderNumber, dto.paymentMethod);
+    return this.orders.retryPayment(
+      { ...this.ctx(user, token), email: dto.email },
+      dto.orderNumber,
+      dto.paymentMethod,
+    );
   }
 }
