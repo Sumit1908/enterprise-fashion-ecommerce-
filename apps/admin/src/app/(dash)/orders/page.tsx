@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiFetch, money } from '@/lib/client';
 import { DataTable, PageHeader } from '@/components/shell';
 
@@ -57,7 +58,15 @@ export default function OrdersPage() {
         rows={rows}
         empty="No orders yet."
         columns={[
-          { key: 'no', header: 'Order', render: (r) => <span className="font-medium">{r.orderNumber}</span> },
+          {
+            key: 'no',
+            header: 'Order',
+            render: (r) => (
+              <Link href={`/orders/${r.id}`} className="font-medium text-[var(--color-brand)] hover:underline">
+                {r.orderNumber}
+              </Link>
+            ),
+          },
           {
             key: 'customer',
             header: 'Customer',

@@ -222,6 +222,26 @@ builds all three Docker images on push.
 
 ---
 
+## 6d. Testing the cart → checkout → payment flow
+
+1. Open the storefront, open any product, pick a size, **Add to Cart**.
+2. Header cart badge updates → open **/cart** → change quantity / remove / apply a code.
+3. **Proceed to checkout** → fill contact + address, pick delivery + payment method.
+4. **Place order**:
+   - **Cash on Delivery** → order is confirmed immediately → **/order/SJ-…**
+   - **Card / UPI / Net Banking** with no gateway keys → a **sandbox pay screen**
+     opens → "Simulate successful payment" confirms the order; "Simulate failed
+     payment" leaves it PENDING with a **Retry** / **Switch to COD** option.
+   - With `RAZORPAY_KEY_*` set → the real Razorpay widget opens; on success the
+     signature is verified server-side.
+5. Payment is always finalised server-side — via `POST /api/v1/checkout/verify`
+   (client callback) and `POST /api/v1/webhooks/payments/<provider>` (gateway
+   webhook, the source of truth). Both are idempotent.
+6. Track the order at **/order/<number>** (guests enter their checkout email) and
+   manage it in **Admin → Orders → <order>** (advance status; every change is audit-logged).
+
+---
+
 ## 7. Production deployment (summary)
 
 1. **Database** — managed PostgreSQL (AWS RDS, Neon, Supabase). Put its URL in

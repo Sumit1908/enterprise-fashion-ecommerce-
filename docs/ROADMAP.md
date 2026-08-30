@@ -49,15 +49,23 @@ Each phase is roughly 2–4 weeks for one full-stack engineer.
 
 ## Phase 3 — Cart, checkout, orders, payments
 
-- Cart service (guest + user, merge on login), mini-cart, save-for-later, coupon apply
-- Pricing engine: promotions, coupons, tax, shipping rates, wallet + loyalty redemption
-- Checkout: address book, pincode serviceability, shipping method selection
-- Payment adapters: Razorpay, Stripe, PhonePe, PayU + webhooks + COD
-- Order lifecycle: status machine, fulfilments, packing slips, invoices (PDF)
-- Shipping adapters: Shiprocket / Delhivery / Blue Dart — label creation + tracking polls
-- Returns/exchanges (RMA) flow + refunds (original / wallet)
-- Transactional messaging: email + SMS + WhatsApp templates, per-event triggers
-- Customer account area: orders, tracking, returns, addresses, wallet, wishlist, reviews
+- ✅ Cart: guest (opaque token) + user carts, merge on association, add / update qty /
+  remove, coupon apply/remove, live stock + price re-check, storefront cart context + page
+- ✅ Pricing engine: tax-inclusive line tax, coupons (%/fixed/free-shipping,
+  min-order / per-user limits), shipping rates, free-shipping threshold, loyalty accrual
+- ✅ Checkout: contact + shipping address, pincode serviceability, shipping method
+  selection, live re-quote, payment method selection, storefront checkout page
+- ✅ Payments: provider abstraction — **COD** (always), **Razorpay** (server order +
+  signature verify + webhook), **sandbox simulator** (no keys). `POST /checkout/verify`
+  (client) + `POST /webhooks/payments/:provider` (source of truth), both idempotent
+- ✅ Order lifecycle: PENDING→CONFIRMED on payment, stock reserve→commit / release /
+  return, order-number series, status timeline, retry payment / switch to COD
+- ✅ Order tracking: storefront `/order/[number]` (progress tracker + timeline,
+  guest-by-email), `/account/orders`; admin order detail + status update (`AuditLog`ged)
+- TODO: address book (saved addresses), wallet + points redemption at checkout, Stripe /
+  PhonePe / PayU adapters, packing slips + PDF invoices, Shiprocket/Delhivery labels +
+  tracking polls, returns/exchanges (RMA) + refunds, transactional email/SMS/WhatsApp,
+  mini-cart drawer, save-for-later, storefront auth
 
 ## Phase 4 — Marketing, CMS, analytics, Super Admin
 
