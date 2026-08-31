@@ -39,6 +39,19 @@ export default async function ProductPage({ params }: PageProps) {
     (v) => v.inventory.reduce((sum, i) => sum + (i.onHand - i.reserved), 0) > 0,
   );
 
+  // Related: use editorial relations if set, else fall back to the same category.
+  let related = product.relatedFrom.map((r) => r.target);
+  if (related.length === 0) {
+    const catSlug = product.categories[0]?.category.slug;
+    if (catSlug) {
+      const more = await api
+        .products(`category=${catSlug}&pageSize=8&sort=bestselling`)
+        .then((r) => r.items)
+        .catch(() => []);
+      related = more.filter((p) => p.slug !== product.slug).slice(0, 4);
+    }
+  }
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -177,13 +190,13 @@ export default async function ProductPage({ params }: PageProps) {
         </div>
       </div>
 
-      {product.relatedFrom.length > 0 && (
+      {related.length > 0 && (
         <section className="mt-20">
           <p className="eyebrow">Complete the look</p>
           <h2 className="mt-3 font-display text-2xl sm:text-3xl">You may also like</h2>
           <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
-            {product.relatedFrom.map((r) => (
-              <ProductCard key={r.target.id} product={r.target} />
+            {related.map((r) => (
+              <ProductCard key={r.id} product={r} />
             ))}
           </div>
         </section>

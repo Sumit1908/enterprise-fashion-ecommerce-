@@ -16,7 +16,7 @@ function buildGroups(tree: CategoryNode[]): NavGroup[] {
   const kids = (node?: CategoryNode) =>
     (node?.children ?? [])
       .filter((c) => c.showInMenu)
-      .slice(0, 8)
+      .slice(0, 12)
       .map((c) => ({ label: c.name, href: `/c/${c.slug}` }));
 
   const women = find('women');
