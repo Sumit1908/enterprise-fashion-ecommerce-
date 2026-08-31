@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { api, type HomeResponse, type ProductCard } from '@/lib/api';
-import { Hero } from '@/components/home/hero';
+import { HeroSlider } from '@/components/home/hero-slider';
 import { TrustBar } from '@/components/home/trust-bar';
 import { CategoryShowcase } from '@/components/home/category-showcase';
 import { ProductRail } from '@/components/home/product-rail';
@@ -49,7 +49,7 @@ export default async function HomePage() {
     );
   }
 
-  const hero = home.banners.find((b) => b.placement === 'HOME_HERO');
+  const heroSlides = home.banners.filter((b) => b.placement === 'HOME_HERO' && b.imageUrl);
   const catTiles = sectionByType(home, 'CATEGORY_GRID')?.tiles ?? [];
   const pool = latest.length ? latest : best;
 
@@ -64,7 +64,7 @@ export default async function HomePage() {
   const campaignImage =
     pool.find((p) => /selvedge|indigo|premium/i.test(p.name))?.media[0]?.url ??
     pool[0]?.media[0]?.url ??
-    hero?.imageUrl ??
+    heroSlides[0]?.imageUrl ??
     null;
 
   const naSection = sectionByType(home, 'NEW_ARRIVALS');
@@ -74,8 +74,8 @@ export default async function HomePage() {
 
   return (
     <>
-      {hero ? (
-        <Hero hero={hero} />
+      {heroSlides.length > 0 ? (
+        <HeroSlider slides={heroSlides} />
       ) : (
         <section className="container-wide py-24">
           <h1 className="font-display text-4xl">Slay Jeans</h1>

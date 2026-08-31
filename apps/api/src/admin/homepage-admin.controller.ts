@@ -19,7 +19,7 @@ import { RequirePermissions } from '../common/decorators.js';
 import { AuditInterceptor } from '../common/audit.interceptor.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-class HeroDto {
+class HeroSlideDto {
   @IsOptional() @IsString() @MaxLength(120) title?: string;
   @IsOptional() @IsString() @MaxLength(160) headline?: string;
   @IsOptional() @IsString() @MaxLength(240) subheadline?: string;
@@ -28,6 +28,11 @@ class HeroDto {
   @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsString() imageMobileUrl?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @Type(() => Number) @IsInt() position?: number;
+}
+
+class HeroMoveDto {
+  @IsString() direction!: 'up' | 'down';
 }
 
 class SectionDto {
@@ -55,17 +60,19 @@ class HomepageAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async overview() {
-    const [hero, sections, testimonials] = await Promise.all([
-      this.prisma.banner.findFirst({ where: { placement: 'HOME_HERO' }, orderBy: { position: 'asc' } }),
+    const [heroSlides, sections, testimonials] = await Promise.all([
+      this.prisma.banner.findMany({
+        where: { placement: 'HOME_HERO' },
+        orderBy: { position: 'asc' },
+      }),
       this.prisma.homeSection.findMany({ orderBy: { position: 'asc' } }),
       this.prisma.testimonial.findMany({ orderBy: { position: 'asc' } }),
     ]);
-    return { hero, sections, testimonials };
+    return { heroSlides, sections, testimonials };
   }
 
-  async saveHero(dto: HeroDto) {
-    const existing = await this.prisma.banner.findFirst({ where: { placement: 'HOME_HERO' } });
-    const fields = {
+  private heroFields(dto: HeroSlideDto) {
+    return {
       headline: dto.headline === undefined ? undefined : blank(dto.headline),
       subheadline: dto.subheadline === undefined ? undefined : blank(dto.subheadline),
       ctaLabel: dto.ctaLabel === undefined ? undefined : blank(dto.ctaLabel),
@@ -73,20 +80,60 @@ class HomepageAdminService {
       imageUrl: dto.imageUrl === undefined ? undefined : blank(dto.imageUrl),
       imageMobileUrl: dto.imageMobileUrl === undefined ? undefined : blank(dto.imageMobileUrl),
       isActive: dto.isActive,
+      position: dto.position,
     };
-    return existing
-      ? this.prisma.banner.update({
-          where: { id: existing.id },
-          data: { ...fields, title: dto.title?.trim() || undefined },
-        })
-      : this.prisma.banner.create({
-          data: {
-            placement: 'HOME_HERO',
-            title: dto.title?.trim() || 'Hero',
-            ...fields,
-            isActive: dto.isActive ?? true,
-          },
-        });
+  }
+
+  async createHeroSlide(dto: HeroSlideDto) {
+    const count = await this.prisma.banner.count({ where: { placement: 'HOME_HERO' } });
+    return this.prisma.banner.create({
+      data: {
+        placement: 'HOME_HERO',
+        title: dto.title?.trim() || `Slide ${count + 1}`,
+        ...this.heroFields(dto),
+        isActive: dto.isActive ?? true,
+        position: dto.position ?? count,
+      },
+    });
+  }
+
+  async updateHeroSlide(id: string, dto: HeroSlideDto) {
+    return this.prisma.banner.update({
+      where: { id },
+      data: { ...this.heroFields(dto), title: dto.title?.trim() || undefined },
+    });
+  }
+
+  async deleteHeroSlide(id: string) {
+    await this.prisma.banner.delete({ where: { id } });
+    // Compact positions so the remaining slides stay 0..n-1.
+    const rest = await this.prisma.banner.findMany({
+      where: { placement: 'HOME_HERO' },
+      orderBy: { position: 'asc' },
+      select: { id: true },
+    });
+    await Promise.all(
+      rest.map((b, i) => this.prisma.banner.update({ where: { id: b.id }, data: { position: i } })),
+    );
+    return { id, deleted: true };
+  }
+
+  async moveHeroSlide(id: string, direction: 'up' | 'down') {
+    const slides = await this.prisma.banner.findMany({
+      where: { placement: 'HOME_HERO' },
+      orderBy: { position: 'asc' },
+      select: { id: true, position: true },
+    });
+    const idx = slides.findIndex((s) => s.id === id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const a = slides[idx];
+    const b = slides[swapIdx];
+    if (!a || !b) return { moved: false };
+    await this.prisma.$transaction([
+      this.prisma.banner.update({ where: { id: a.id }, data: { position: b.position } }),
+      this.prisma.banner.update({ where: { id: b.id }, data: { position: a.position } }),
+    ]);
+    return { moved: true };
   }
 
   async saveSection(id: string, dto: SectionDto) {
@@ -150,10 +197,28 @@ class HomepageAdminController {
     return this.service.overview();
   }
 
-  @Patch('hero')
+  @Post('hero')
   @RequirePermissions('homeSection:update')
-  saveHero(@Body() dto: HeroDto) {
-    return this.service.saveHero(dto);
+  createHeroSlide(@Body() dto: HeroSlideDto) {
+    return this.service.createHeroSlide(dto);
+  }
+
+  @Patch('hero/:id')
+  @RequirePermissions('homeSection:update')
+  updateHeroSlide(@Param('id') id: string, @Body() dto: HeroSlideDto) {
+    return this.service.updateHeroSlide(id, dto);
+  }
+
+  @Patch('hero/:id/move')
+  @RequirePermissions('homeSection:update')
+  moveHeroSlide(@Param('id') id: string, @Body() dto: HeroMoveDto) {
+    return this.service.moveHeroSlide(id, dto.direction);
+  }
+
+  @Delete('hero/:id')
+  @RequirePermissions('homeSection:update')
+  deleteHeroSlide(@Param('id') id: string) {
+    return this.service.deleteHeroSlide(id);
   }
 
   @Patch('sections/:id')

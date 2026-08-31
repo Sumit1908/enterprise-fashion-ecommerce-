@@ -6,8 +6,8 @@ import { PageHeader } from '@/components/shell';
 import { Button, Card, Checkbox, Field, Input, Textarea } from '@/components/form';
 import { MediaUploader } from '@/components/media-uploader';
 
-interface Hero {
-  id?: string;
+interface HeroSlide {
+  id: string;
   title?: string | null;
   headline?: string | null;
   subheadline?: string | null;
@@ -15,7 +15,8 @@ interface Hero {
   ctaUrl?: string | null;
   imageUrl?: string | null;
   imageMobileUrl?: string | null;
-  isActive?: boolean;
+  isActive: boolean;
+  position: number;
 }
 interface Section {
   id: string;
@@ -38,15 +39,15 @@ interface Testimonial {
 }
 
 export default function HomepagePage() {
-  const [hero, setHero] = useState<Hero | null>(null);
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[] | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    apiFetch<{ hero: Hero | null; sections: Section[]; testimonials: Testimonial[] }>('/admin/homepage')
+    apiFetch<{ heroSlides: HeroSlide[]; sections: Section[]; testimonials: Testimonial[] }>('/admin/homepage')
       .then((d) => {
-        setHero(d.hero ?? {});
+        setHeroSlides(d.heroSlides ?? []);
         setSections(d.sections);
         setTestimonials(d.testimonials);
       })
@@ -55,13 +56,13 @@ export default function HomepagePage() {
   useEffect(load, [load]);
 
   if (error) return <p className="text-sm text-[var(--color-bad)]">{error}</p>;
-  if (!hero) return <p className="text-sm text-[var(--color-muted)]">Loading…</p>;
+  if (!heroSlides) return <p className="text-sm text-[var(--color-muted)]">Loading…</p>;
 
   return (
     <>
-      <PageHeader title="Homepage" subtitle="Hero banner, section titles/visibility and customer testimonials. Changes are live." />
+      <PageHeader title="Homepage" subtitle="Hero slider, section titles/visibility and customer testimonials. Changes are live." />
       <div className="space-y-6">
-        <HeroEditor hero={hero} onSaved={load} />
+        <HeroSlidesEditor slides={heroSlides} onSaved={load} />
         <SectionsEditor sections={sections} onSaved={load} />
         <TestimonialsEditor rows={testimonials} onSaved={load} />
       </div>
@@ -69,29 +70,95 @@ export default function HomepagePage() {
   );
 }
 
-function HeroEditor({ hero, onSaved }: { hero: Hero; onSaved: () => void }) {
-  const [v, setV] = useState<Hero>(hero);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const set = <K extends keyof Hero>(k: K, val: Hero[K]) => setV((p) => ({ ...p, [k]: val }));
+function HeroSlidesEditor({ slides, onSaved }: { slides: HeroSlide[]; onSaved: () => void }) {
+  const [adding, setAdding] = useState(false);
 
-  async function save() {
-    setSaving(true);
-    setMsg(null);
+  async function addSlide() {
+    setAdding(true);
     try {
       await apiFetch('/admin/homepage/hero', {
-        method: 'PATCH',
+        method: 'POST',
         body: JSON.stringify({
-          title: v.title ?? '',
-          headline: v.headline ?? '',
-          subheadline: v.subheadline ?? '',
-          ctaLabel: v.ctaLabel ?? '',
-          ctaUrl: v.ctaUrl ?? '',
-          imageUrl: v.imageUrl ?? '',
-          imageMobileUrl: v.imageMobileUrl ?? '',
-          isActive: v.isActive ?? true,
+          title: 'New',
+          headline: 'New headline',
+          ctaLabel: 'Shop now',
+          ctaUrl: '/shop',
+          isActive: false,
         }),
       });
+      onSaved();
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <Card title="Hero slider">
+      <p className="mb-4 text-xs text-[var(--color-muted)]">
+        Slides play in order, top to bottom. Each slide has a separate desktop and mobile image —
+        desktop shows above 768px, mobile below. Turn a slide off to hide it without deleting it.
+        The slider autoplays, with arrows and dots, only when 2+ slides are active.
+      </p>
+      <div className="space-y-4">
+        {slides.length === 0 && (
+          <p className="rounded-md border border-dashed border-[var(--color-line)] p-6 text-center text-sm text-[var(--color-muted)]">
+            No hero slides yet. Add one below.
+          </p>
+        )}
+        {slides.map((s, i) => (
+          <HeroSlideRow
+            key={s.id}
+            slide={s}
+            first={i === 0}
+            last={i === slides.length - 1}
+            onSaved={onSaved}
+          />
+        ))}
+      </div>
+      <div className="mt-4">
+        <Button onClick={addSlide} disabled={adding}>
+          {adding ? 'Adding…' : '+ Add slide'}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function HeroSlideRow({
+  slide,
+  first,
+  last,
+  onSaved,
+}: {
+  slide: HeroSlide;
+  first: boolean;
+  last: boolean;
+  onSaved: () => void;
+}) {
+  const [v, setV] = useState<HeroSlide>(slide);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const set = <K extends keyof HeroSlide>(k: K, val: HeroSlide[K]) => setV((p) => ({ ...p, [k]: val }));
+
+  async function save(extra: Partial<HeroSlide> = {}) {
+    setSaving(true);
+    setMsg(null);
+    const next = { ...v, ...extra };
+    try {
+      await apiFetch(`/admin/homepage/hero/${slide.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: next.title ?? '',
+          headline: next.headline ?? '',
+          subheadline: next.subheadline ?? '',
+          ctaLabel: next.ctaLabel ?? '',
+          ctaUrl: next.ctaUrl ?? '',
+          imageUrl: next.imageUrl ?? '',
+          imageMobileUrl: next.imageMobileUrl ?? '',
+          isActive: next.isActive,
+        }),
+      });
+      setV(next);
       setMsg('Saved');
       onSaved();
     } catch (e) {
@@ -101,14 +168,40 @@ function HeroEditor({ hero, onSaved }: { hero: Hero; onSaved: () => void }) {
     }
   }
 
+  async function move(direction: 'up' | 'down') {
+    await apiFetch(`/admin/homepage/hero/${slide.id}/move`, {
+      method: 'PATCH',
+      body: JSON.stringify({ direction }),
+    });
+    onSaved();
+  }
+
+  async function del() {
+    if (!confirm('Delete this hero slide?')) return;
+    await apiFetch(`/admin/homepage/hero/${slide.id}`, { method: 'DELETE' });
+    onSaved();
+  }
+
   return (
-    <Card title="Hero banner">
+    <div className="rounded-lg border border-[var(--color-line)] p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+          Slide {slide.position + 1}
+          {!v.isActive && ' · hidden'}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" onClick={() => move('up')} disabled={first} className="px-2 py-1">↑</Button>
+          <Button variant="ghost" onClick={() => move('down')} disabled={last} className="px-2 py-1">↓</Button>
+          <Button variant="danger" onClick={del} className="px-2 py-1">Delete</Button>
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Eyebrow / label" hint="Small text above the headline">
-          <Input value={v.title ?? ''} onChange={(e) => set('title', e.target.value)} />
+          <Input value={v.title ?? ''} onChange={(e) => set('title', e.target.value)} placeholder="Pure Linen" />
         </Field>
         <Field label="CTA button label">
-          <Input value={v.ctaLabel ?? ''} onChange={(e) => set('ctaLabel', e.target.value)} placeholder="Shop New In" />
+          <Input value={v.ctaLabel ?? ''} onChange={(e) => set('ctaLabel', e.target.value)} placeholder="Shop now" />
         </Field>
         <div className="sm:col-span-2">
           <Field label="Headline">
@@ -116,22 +209,23 @@ function HeroEditor({ hero, onSaved }: { hero: Hero; onSaved: () => void }) {
           </Field>
         </div>
         <div className="sm:col-span-2">
-          <Field label="Subheadline">
+          <Field label="Subheadline (optional)">
             <Input value={v.subheadline ?? ''} onChange={(e) => set('subheadline', e.target.value)} />
           </Field>
         </div>
-        <Field label="CTA link" hint="e.g. /collections/new-arrivals">
+        <Field label="CTA link" hint="e.g. /collections/oxford or /c/men-shirts">
           <Input value={v.ctaUrl ?? ''} onChange={(e) => set('ctaUrl', e.target.value)} />
         </Field>
         <div className="flex items-end">
-          <Checkbox label="Show hero" checked={v.isActive ?? true} onChange={(c) => set('isActive', c)} />
+          <Checkbox label="Slide active" checked={v.isActive} onChange={(c) => save({ isActive: c })} />
         </div>
+
         <div>
-          <Field label="Desktop image URL">
+          <Field label="Desktop banner (shown above 768px)">
             <Input value={v.imageUrl ?? ''} onChange={(e) => set('imageUrl', e.target.value)} placeholder="https://…" />
           </Field>
           <div className="mt-2 flex items-center gap-3">
-            <MediaUploader onUploaded={(u) => set('imageUrl', u)} />
+            <MediaUploader onUploaded={(u) => save({ imageUrl: u })} />
             {v.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={v.imageUrl} alt="" className="h-16 w-28 rounded border border-[var(--color-line)] object-cover" />
@@ -139,11 +233,11 @@ function HeroEditor({ hero, onSaved }: { hero: Hero; onSaved: () => void }) {
           </div>
         </div>
         <div>
-          <Field label="Mobile image URL (optional)">
+          <Field label="Mobile banner (shown below 768px)">
             <Input value={v.imageMobileUrl ?? ''} onChange={(e) => set('imageMobileUrl', e.target.value)} placeholder="https://…" />
           </Field>
           <div className="mt-2 flex items-center gap-3">
-            <MediaUploader onUploaded={(u) => set('imageMobileUrl', u)} />
+            <MediaUploader onUploaded={(u) => save({ imageMobileUrl: u })} />
             {v.imageMobileUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={v.imageMobileUrl} alt="" className="h-16 w-16 rounded border border-[var(--color-line)] object-cover" />
@@ -151,11 +245,12 @@ function HeroEditor({ hero, onSaved }: { hero: Hero; onSaved: () => void }) {
           </div>
         </div>
       </div>
+
       <div className="mt-4 flex items-center gap-3">
-        <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save hero'}</Button>
+        <Button onClick={() => save()} disabled={saving}>{saving ? 'Saving…' : 'Save slide'}</Button>
         {msg && <span className="text-xs text-[var(--color-muted)]">{msg}</span>}
       </div>
-    </Card>
+    </div>
   );
 }
 

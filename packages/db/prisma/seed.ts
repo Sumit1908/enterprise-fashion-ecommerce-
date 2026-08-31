@@ -415,24 +415,45 @@ async function seedHomepage() {
     });
   }
 
-  const heroData = {
-    title: 'Autumn Drop',
-    headline: 'The Autumn Denim Drop',
-    subheadline: 'New washes. New fits. Limited runs.',
-    ctaLabel: 'Shop New In',
-    ctaUrl: '/collections/new-arrivals',
-    imageUrl:
-      'https://images.unsplash.com/photo-1582418702059-97ebafb35d09?w=1920&q=80&auto=format&fit=crop',
-    isActive: true,
-    position: 0,
-  };
-  const existingHero = await prisma.banner.findFirst({ where: { placement: 'HOME_HERO' } });
-  if (existingHero) {
-    await prisma.banner.update({ where: { id: existingHero.id }, data: heroData });
-  } else {
-    await prisma.banner.create({ data: { placement: 'HOME_HERO', ...heroData } });
+  // Hero slider — one Banner row per slide, ordered by `position`.
+  // Desktop (imageUrl) shows above 768px, mobile (imageMobileUrl) below.
+  const HERO_IMG = (id: string, w: number, h: number) =>
+    `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&q=85&auto=format&fit=crop&crop=entropy`;
+  const heroSlides = [
+    {
+      title: 'Pure Linen',
+      headline: 'The Oxford Shirt, Reimagined',
+      subheadline: 'Tailored linen and cotton, cut clean for warm days.',
+      ctaLabel: 'Shop Shirts',
+      ctaUrl: '/c/men-shirts',
+      imageUrl: HERO_IMG('1596755094514-f87e34085b2c', 2400, 1200),
+      imageMobileUrl: HERO_IMG('1596755094514-f87e34085b2c', 1000, 1400),
+    },
+    {
+      title: 'Oxford Edit',
+      headline: 'Weekend Whites',
+      subheadline: 'Breathable shirts and easy trousers, ready for anything.',
+      ctaLabel: 'Shop the Edit',
+      ctaUrl: '/c/men',
+      imageUrl: HERO_IMG('1607345366928-199ea26cfe3e', 2400, 1200),
+      imageMobileUrl: HERO_IMG('1607345366928-199ea26cfe3e', 1000, 1400),
+    },
+  ];
+
+  // Retire the old single "Autumn Denim Drop" hero if it's still the only slide.
+  await prisma.banner.deleteMany({
+    where: { placement: 'HOME_HERO', OR: [{ title: 'Autumn Drop' }, { headline: 'The Autumn Denim Drop' }] },
+  });
+
+  const heroCount = await prisma.banner.count({ where: { placement: 'HOME_HERO' } });
+  if (heroCount === 0) {
+    for (const [i, slide] of heroSlides.entries()) {
+      await prisma.banner.create({
+        data: { placement: 'HOME_HERO', ...slide, isActive: true, position: i },
+      });
+    }
   }
-  console.log(`  Homepage: ${sections.length} sections + hero banner`);
+  console.log(`  Homepage: ${sections.length} sections + ${Math.max(heroCount, heroSlides.length)} hero slides`);
 }
 
 /* =========================================================================
