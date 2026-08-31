@@ -172,12 +172,17 @@ class StorefrontController {
           OR: [
             { name: { contains: term, mode: 'insensitive' } },
             { shortDescription: { contains: term, mode: 'insensitive' } },
+            { description: { contains: term, mode: 'insensitive' } },
+            { sku: { contains: term, mode: 'insensitive' } },
             { brand: { name: { contains: term, mode: 'insensitive' } } },
             { tags: { some: { tag: { name: { contains: term, mode: 'insensitive' } } } } },
+            { categories: { some: { category: { name: { contains: term, mode: 'insensitive' } } } } },
+            { variants: { some: { sku: { contains: term, mode: 'insensitive' } } } },
           ],
         },
         select: CARD_SELECT,
-        take: 12,
+        take: 24,
+        orderBy: { soldCount: 'desc' },
       }));
 
     void this.prisma.searchQuery

@@ -30,58 +30,73 @@ const SORT_MAP: Record<string, Prisma.ProductOrderByWithRelationInput> = {
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listProducts(query: ProductQueryDto) {
-    const page = Math.max(1, query.page ?? 1);
-    const pageSize = Math.min(60, Math.max(1, query.pageSize ?? 24));
+  private csv(v?: string): string[] {
+    return (v ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  }
 
+  /** Category itself + every descendant, by materialised path. */
+  private async categoryScopeIds(slug: string): Promise<string[]> {
+    const target = await this.prisma.category.findUnique({
+      where: { slug },
+      select: { path: true },
+    });
+    if (!target?.path) return [];
+    const rows = await this.prisma.category.findMany({
+      where: { OR: [{ path: target.path }, { path: { startsWith: `${target.path}/` } }] },
+      select: { id: true },
+    });
+    return rows.map((c) => c.id);
+  }
+
+  private async buildProductWhere(query: ProductQueryDto): Promise<Prisma.ProductWhereInput> {
     const where: Prisma.ProductWhereInput = {
       status: 'ACTIVE',
       deletedAt: null,
       publishedAt: { lte: new Date() },
     };
 
-    if (query.category) {
-      // Include the category itself AND everything below it, so a top-level
-      // page like /c/men shows products filed under men/jeans, men/shirts, …
-      const target = await this.prisma.category.findUnique({
-        where: { slug: query.category },
-        select: { id: true, path: true },
-      });
-      const descendantIds = target?.path
-        ? (
-            await this.prisma.category.findMany({
-              where: { OR: [{ path: target.path }, { path: { startsWith: `${target.path}/` } }] },
-              select: { id: true },
-            })
-          ).map((c) => c.id)
-        : [];
+    const subs = this.csv(query.sub);
+    if (subs.length) {
+      // Narrowed to one or more subcategories (their subtrees).
+      const idSets = await Promise.all(subs.map((s) => this.categoryScopeIds(s)));
+      const ids = [...new Set(idSets.flat())];
       where.categories = {
-        some: {
-          category: descendantIds.length
-            ? { id: { in: descendantIds } }
-            : { slug: query.category },
-        },
+        some: { category: ids.length ? { id: { in: ids } } : { slug: { in: subs } } },
+      };
+    } else if (query.category) {
+      const ids = await this.categoryScopeIds(query.category);
+      where.categories = {
+        some: { category: ids.length ? { id: { in: ids } } : { slug: query.category } },
       };
     }
     if (query.collection) {
       where.collections = { some: { collection: { slug: query.collection } } };
     }
     if (query.brand) {
-      where.brand = { slug: { in: query.brand.split(',') } };
+      where.brand = { slug: { in: this.csv(query.brand) } };
     }
     if (query.gender) where.gender = query.gender;
     if (query.minPrice != null || query.maxPrice != null) {
-      where.salePrice = {
-        gte: query.minPrice ?? undefined,
-        lte: query.maxPrice ?? undefined,
-      };
+      where.salePrice = { gte: query.minPrice ?? undefined, lte: query.maxPrice ?? undefined };
     }
     if (query.minRating != null) where.ratingAverage = { gte: query.minRating };
     if (query.inStock) {
-      where.variants = {
-        some: { inventory: { some: { onHand: { gt: 0 } } } },
-      };
+      where.variants = { some: { inventory: { some: { onHand: { gt: 0 } } } } };
     }
+
+    // Size / colour facets — "has a variant with size X" AND "has a variant with
+    // colour Y" (standard faceted behaviour; not necessarily the same variant).
+    const and: Prisma.ProductWhereInput[] = [];
+    const sizes = this.csv(query.size);
+    const colors = this.csv(query.color);
+    if (sizes.length) {
+      and.push({ variants: { some: { optionValues: { some: { optionValue: { value: { in: sizes } } } } } } });
+    }
+    if (colors.length) {
+      and.push({ variants: { some: { optionValues: { some: { optionValue: { value: { in: colors } } } } } } });
+    }
+    if (and.length) where.AND = and;
+
     if (query.search) {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
@@ -89,6 +104,13 @@ export class CatalogService {
         { tags: { some: { tag: { name: { contains: query.search, mode: 'insensitive' } } } } },
       ];
     }
+    return where;
+  }
+
+  async listProducts(query: ProductQueryDto) {
+    const page = Math.max(1, query.page ?? 1);
+    const pageSize = Math.min(60, Math.max(1, query.pageSize ?? 24));
+    const where = await this.buildProductWhere(query);
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
@@ -104,6 +126,83 @@ export class CatalogService {
     return {
       items,
       pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+    };
+  }
+
+  /**
+   * Available filter values for the current scope (category / collection /
+   * gender / search). Powers the storefront filter bar.
+   */
+  async getFacets(query: ProductQueryDto) {
+    // Facets describe what's available *before* size / colour / subcategory /
+    // price narrowing — so those controls stay usable.
+    const scoped = await this.buildProductWhere({
+      ...query,
+      sub: undefined,
+      size: undefined,
+      color: undefined,
+      minPrice: undefined,
+      maxPrice: undefined,
+    });
+
+    const products = await this.prisma.product.findMany({
+      where: scoped,
+      select: {
+        salePrice: true,
+        brand: { select: { name: true, slug: true } },
+        categories: {
+          select: { category: { select: { name: true, slug: true, parentId: true } } },
+        },
+        options: { select: { name: true, values: { select: { value: true, hexColor: true } } } },
+      },
+    });
+
+    const sizes = new Set<string>();
+    const colors = new Map<string, string | null>();
+    const brands = new Map<string, string>();
+    const subcats = new Map<string, string>();
+    let min = Number.POSITIVE_INFINITY;
+    let max = 0;
+
+    for (const p of products) {
+      const price = Number(p.salePrice);
+      if (Number.isFinite(price)) {
+        min = Math.min(min, price);
+        max = Math.max(max, price);
+      }
+      if (p.brand) brands.set(p.brand.slug, p.brand.name);
+      for (const o of p.options) {
+        if (o.name.toLowerCase() === 'size') o.values.forEach((v) => sizes.add(v.value));
+        if (o.name.toLowerCase() === 'color' || o.name.toLowerCase() === 'colour') {
+          o.values.forEach((v) => colors.set(v.value, v.hexColor));
+        }
+      }
+      for (const pc of p.categories) {
+        if (pc.category.parentId) subcats.set(pc.category.slug, pc.category.name);
+      }
+    }
+
+    // Keep size order sensible: alpha sizes first in S→XXL order, then numeric.
+    const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    const sizeList = [...sizes].sort((a, b) => {
+      const ia = sizeOrder.indexOf(a);
+      const ib = sizeOrder.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      const na = parseFloat(a);
+      const nb = parseFloat(b);
+      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+
+    return {
+      total: products.length,
+      sizes: sizeList,
+      colors: [...colors.entries()].map(([name, hex]) => ({ name, hex })),
+      brands: [...brands.entries()].map(([slug, name]) => ({ slug, name })).sort((a, b) => a.name.localeCompare(b.name)),
+      subcategories: [...subcats.entries()].map(([slug, name]) => ({ slug, name })).sort((a, b) => a.name.localeCompare(b.name)),
+      price: { min: min === Number.POSITIVE_INFINITY ? 0 : Math.floor(min), max: Math.ceil(max) },
     };
   }
 

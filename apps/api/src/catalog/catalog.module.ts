@@ -18,6 +18,13 @@ class CatalogController {
     return this.catalog.listProducts(query);
   }
 
+  // Must be declared before `products/:slug` so it isn't captured as a slug.
+  @Public()
+  @Get('products/facets')
+  facets(@Query() query: ProductQueryDto) {
+    return this.catalog.getFacets(query);
+  }
+
   @Public()
   @Get('products/:slug')
   getProduct(@Param('slug') slug: string) {
