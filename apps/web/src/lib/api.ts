@@ -101,7 +101,17 @@ export const api = {
       suggestions: string[];
       products: ProductCard[];
     }>(`/storefront/search?q=${encodeURIComponent(q)}`, 0),
+  facets: (qs: string) => get<Facets>(`/products/facets?${qs}`, 60),
 };
+
+export interface Facets {
+  total: number;
+  sizes: string[];
+  colors: { name: string; hex: string | null }[];
+  brands: { slug: string; name: string }[];
+  subcategories: { slug: string; name: string }[];
+  price: { min: number; max: number };
+}
 
 export interface ProductDetail extends ProductCard {
   description: string | null;

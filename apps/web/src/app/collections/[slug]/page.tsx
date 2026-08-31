@@ -1,22 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, type Facets } from '@/lib/api';
 import { ProductCard } from '@/components/product-card';
+import { ProductFilters } from '@/components/product-filters';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }
 
-const SORTS: [string, string][] = [
-  ['latest', 'Latest'],
-  ['popular', 'Popular'],
-  ['bestselling', 'Best Selling'],
-  ['price_asc', 'Price: Low to High'],
-  ['price_desc', 'Price: High to Low'],
-  ['rating', 'Highest Rated'],
-];
+const FILTER_KEYS = ['sort', 'brand', 'minPrice', 'maxPrice', 'gender', 'inStock', 'size', 'color', 'sub'] as const;
 
 function qsFrom(sp: Record<string, string | undefined>, overrides: Record<string, string>) {
   const clean: Record<string, string> = {};
@@ -46,9 +40,14 @@ export default async function CollectionPage({ params, searchParams }: PageProps
   }
 
   const qs = new URLSearchParams({ collection: slug, page: sp.page ?? '1' });
-  if (sp.sort) qs.set('sort', sp.sort);
+  for (const k of FILTER_KEYS) if (sp[k]) qs.set(k, sp[k]!);
 
-  const { items, pagination } = await api.products(qs.toString());
+  const [{ items, pagination }, facets] = await Promise.all([
+    api.products(qs.toString()),
+    api.facets(`collection=${slug}`).catch(
+      (): Facets => ({ total: 0, sizes: [], colors: [], brands: [], subcategories: [], price: { min: 0, max: 0 } }),
+    ),
+  ]);
 
   return (
     <div className="container-wide py-10">
@@ -68,31 +67,14 @@ export default async function CollectionPage({ params, searchParams }: PageProps
         )}
       </header>
 
-      {pagination.total > 0 && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[var(--color-ink-soft)]">{pagination.total} products</p>
-          <div className="hide-scrollbar flex gap-2 overflow-x-auto text-sm">
-            {SORTS.map(([value, label]) => (
-              <Link
-                key={value}
-                href={`/collections/${slug}?${qsFrom(sp, { sort: value })}`}
-                className={`whitespace-nowrap rounded-full border px-3 py-1.5 ${
-                  sp.sort === value
-                    ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
-                    : 'border-[var(--color-sand)]'
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
+      {(pagination.total > 0 || Object.keys(sp).some((k) => (FILTER_KEYS as readonly string[]).includes(k))) && (
+        <ProductFilters basePath={`/collections/${slug}`} sp={sp} facets={facets} total={pagination.total} />
       )}
 
       {items.length === 0 ? (
         <div className="py-24 text-center">
           <p className="text-[var(--color-ink-soft)]">Nothing in this collection right now.</p>
-          <Link href="/" className="mt-4 inline-block text-sm font-medium underline">
+          <Link href="/shop" className="mt-4 inline-block text-sm font-medium underline">
             Browse everything
           </Link>
         </div>

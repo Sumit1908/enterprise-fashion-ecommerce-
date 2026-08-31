@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, type Facets } from '@/lib/api';
 import { ProductCard } from '@/components/product-card';
+import { ProductFilters } from '@/components/product-filters';
 import { SectionHeader } from '@/components/ui/section-header';
 
 interface PageProps {
@@ -10,17 +11,10 @@ interface PageProps {
 
 export const metadata: Metadata = {
   title: 'Shop All',
-  description: 'Every pair of Slay Jeans denim — browse the full catalogue.',
+  description: 'Browse the full Slay Jeans collection for Men, Women and Kids.',
 };
 
-const SORTS: [string, string][] = [
-  ['latest', 'Latest'],
-  ['popular', 'Popular'],
-  ['bestselling', 'Best Selling'],
-  ['price_asc', 'Price: Low to High'],
-  ['price_desc', 'Price: High to Low'],
-  ['rating', 'Highest Rated'],
-];
+const FILTER_KEYS = ['sort', 'brand', 'minPrice', 'maxPrice', 'gender', 'inStock', 'size', 'color', 'sub'] as const;
 
 function qsFrom(sp: Record<string, string | undefined>, overrides: Record<string, string>) {
   const clean: Record<string, string> = {};
@@ -31,9 +25,14 @@ function qsFrom(sp: Record<string, string | undefined>, overrides: Record<string
 export default async function ShopPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const qs = new URLSearchParams({ page: sp.page ?? '1', pageSize: '24' });
-  if (sp.sort) qs.set('sort', sp.sort);
+  for (const k of FILTER_KEYS) if (sp[k]) qs.set(k, sp[k]!);
 
-  const { items, pagination } = await api.products(qs.toString());
+  const [{ items, pagination }, facets] = await Promise.all([
+    api.products(qs.toString()),
+    api.facets(sp.gender ? `gender=${sp.gender}` : '').catch(
+      (): Facets => ({ total: 0, sizes: [], colors: [], brands: [], subcategories: [], price: { min: 0, max: 0 } }),
+    ),
+  ]);
 
   return (
     <div className="container-wide py-12 lg:py-16">
@@ -46,31 +45,19 @@ export default async function ShopPage({ searchParams }: PageProps) {
       <div className="mt-4">
         <SectionHeader
           eyebrow="The full collection"
-          title="Shop All Denim"
-          description={`${pagination.total} styles — slim to wide leg, raw to vintage wash.`}
+          title="Shop All"
+          description={`${pagination.total} styles across Men, Women & Kids.`}
         />
       </div>
 
-      <div className="hide-scrollbar -mt-4 mb-8 flex gap-2 overflow-x-auto text-sm">
-        {SORTS.map(([value, label]) => (
-          <Link
-            key={value}
-            href={`/shop?${qsFrom(sp, { sort: value, page: '1' })}`}
-            className={`whitespace-nowrap rounded-full border px-3 py-1.5 ${
-              sp.sort === value
-                ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
-                : 'border-[var(--color-sand)]'
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
+      <ProductFilters basePath="/shop" sp={sp} facets={facets} total={pagination.total} />
 
       {items.length === 0 ? (
-        <p className="py-24 text-center text-[var(--color-ink-soft)]">Nothing to show yet.</p>
+        <p className="py-24 text-center text-[var(--color-ink-soft)]">
+          No products match these filters. <Link href="/shop" className="underline">Clear filters</Link>
+        </p>
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
           {items.map((p, i) => (
             <ProductCard key={p.id} product={p} priority={i < 2} />
           ))}

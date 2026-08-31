@@ -2,22 +2,16 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, type Facets } from '@/lib/api';
 import { ProductCard } from '@/components/product-card';
+import { ProductFilters } from '@/components/product-filters';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }
 
-const SORTS: [string, string][] = [
-  ['latest', 'Latest'],
-  ['popular', 'Popular'],
-  ['bestselling', 'Best Selling'],
-  ['price_asc', 'Price: Low to High'],
-  ['price_desc', 'Price: High to Low'],
-  ['rating', 'Highest Rated'],
-];
+const FILTER_KEYS = ['sort', 'brand', 'minPrice', 'maxPrice', 'gender', 'inStock', 'size', 'color', 'sub'] as const;
 
 function qsFrom(sp: Record<string, string | undefined>, overrides: Record<string, string>) {
   const clean: Record<string, string> = {};
@@ -50,14 +44,17 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   }
 
   const qs = new URLSearchParams({ category: slug, page: sp.page ?? '1' });
-  if (sp.sort) qs.set('sort', sp.sort);
-  if (sp.brand) qs.set('brand', sp.brand);
-  if (sp.minPrice) qs.set('minPrice', sp.minPrice);
-  if (sp.maxPrice) qs.set('maxPrice', sp.maxPrice);
-  if (sp.gender) qs.set('gender', sp.gender);
-  if (sp.inStock) qs.set('inStock', 'true');
+  for (const k of FILTER_KEYS) if (sp[k]) qs.set(k, sp[k]!);
 
-  const { items, pagination } = await api.products(qs.toString());
+  const facetQs = new URLSearchParams({ category: slug });
+  if (sp.gender) facetQs.set('gender', sp.gender);
+
+  const [{ items, pagination }, facets] = await Promise.all([
+    api.products(qs.toString()),
+    api.facets(facetQs.toString()).catch(
+      (): Facets => ({ total: 0, sizes: [], colors: [], brands: [], subcategories: [], price: { min: 0, max: 0 } }),
+    ),
+  ]);
 
   return (
     <div>
@@ -96,28 +93,11 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
         )}
       </header>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-[var(--color-ink-soft)]">{pagination.total} products</p>
-        <div className="flex gap-2 overflow-x-auto text-sm hide-scrollbar">
-          {SORTS.map(([value, label]) => (
-            <Link
-              key={value}
-              href={`/c/${slug}?${qsFrom(sp, { sort: value })}`}
-              className={`whitespace-nowrap rounded-full border px-3 py-1.5 ${
-                sp.sort === value
-                  ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white'
-                  : 'border-[var(--color-sand)]'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      </div>
+      <ProductFilters basePath={`/c/${slug}`} sp={sp} facets={facets} total={pagination.total} />
 
       {items.length === 0 ? (
         <p className="py-24 text-center text-[var(--color-ink-soft)]">
-          No products match these filters yet.
+          No products match these filters. <Link href={`/c/${slug}`} className="underline">Clear filters</Link>
         </p>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
