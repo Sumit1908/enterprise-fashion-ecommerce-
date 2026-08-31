@@ -116,13 +116,6 @@ export function SiteFooter() {
                 {SITE.email}
               </a>
             </li>
-            <li className="flex items-start gap-2.5 text-[var(--color-ink-mute)]">
-              <IconPin />
-              <span>
-                {SITE.address.line1}, {SITE.address.city}, {SITE.address.state} –{' '}
-                {SITE.address.pincode}
-              </span>
-            </li>
           </ul>
 
           <div className="mt-6 flex gap-3 text-[var(--color-ink)]">
@@ -137,8 +130,7 @@ export function SiteFooter() {
 
       <div className="border-t border-[var(--color-line)]">
         <div className="container-wide py-5 text-center text-xs text-[var(--color-ink-mute)] sm:text-left">
-          © {new Date().getFullYear()} {SITE.name}. {SITE.address.city}, {SITE.address.state}, India.
-          All rights reserved.
+          © {new Date().getFullYear()} {SITE.name}. All rights reserved.
         </div>
       </div>
     </footer>
@@ -191,14 +183,6 @@ function IconMail() {
     <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="m3 7 9 6 9-6" />
-    </svg>
-  );
-}
-function IconPin() {
-  return (
-    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z" />
-      <circle cx="12" cy="10" r="2.5" />
     </svg>
   );
 }
