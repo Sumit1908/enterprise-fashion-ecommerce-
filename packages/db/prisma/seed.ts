@@ -417,26 +417,17 @@ async function seedHomepage() {
 
   // Hero slider — one Banner row per slide, ordered by `position`.
   // Desktop (imageUrl) shows above 768px, mobile (imageMobileUrl) below.
-  const HERO_IMG = (id: string, w: number, h: number) =>
-    `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&q=85&auto=format&fit=crop&crop=entropy`;
+  // Slide artwork lives in apps/web/public so it deploys with the storefront
+  // (no external host / object storage needed).
   const heroSlides = [
     {
       title: 'Pure Linen',
-      headline: 'The Oxford Shirt, Reimagined',
-      subheadline: 'Tailored linen and cotton, cut clean for warm days.',
+      headline: 'Warm-Weather Linen',
+      subheadline: 'Breathable linen shirts and easy trousers, made for the sun.',
       ctaLabel: 'Shop Shirts',
       ctaUrl: '/c/men-shirts',
-      imageUrl: HERO_IMG('1596755094514-f87e34085b2c', 2400, 1200),
-      imageMobileUrl: HERO_IMG('1596755094514-f87e34085b2c', 1000, 1400),
-    },
-    {
-      title: 'Oxford Edit',
-      headline: 'Weekend Whites',
-      subheadline: 'Breathable shirts and easy trousers, ready for anything.',
-      ctaLabel: 'Shop the Edit',
-      ctaUrl: '/c/men',
-      imageUrl: HERO_IMG('1607345366928-199ea26cfe3e', 2400, 1200),
-      imageMobileUrl: HERO_IMG('1607345366928-199ea26cfe3e', 1000, 1400),
+      imageUrl: '/hero-1.jpg',
+      imageMobileUrl: '/hero-1-mobile.jpg',
     },
   ];
 
@@ -453,7 +444,7 @@ async function seedHomepage() {
       });
     }
   }
-  console.log(`  Homepage: ${sections.length} sections + ${Math.max(heroCount, heroSlides.length)} hero slides`);
+  console.log(`  Homepage: ${sections.length} sections + ${Math.max(heroCount, heroSlides.length)} hero slide(s)`);
 }
 
 /* =========================================================================
