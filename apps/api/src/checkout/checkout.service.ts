@@ -14,7 +14,7 @@ const METHOD_LABELS: Record<string, { label: string; description: string }> = {
     label: 'Pay Online',
     description: 'Card, UPI, Net Banking & Wallets — secured & verified',
   },
-  WALLET: { label: 'Store Wallet', description: 'Use your Slay Jeans balance' },
+  WALLET: { label: 'Store Wallet', description: 'Use your Velor House balance' },
 };
 
 @Injectable()

@@ -17,15 +17,15 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Slay Jeans — Denim, redefined.',
-    template: '%s | Slay Jeans',
+    default: 'Velor House — Denim, redefined.',
+    template: '%s | Velor House',
   },
   description:
     'Premium denim and fashion for Men, Women and Kids. New washes, considered fits, limited runs.',
   metadataBase: new URL(process.env.WEB_URL ?? 'http://localhost:3000'),
   openGraph: {
     type: 'website',
-    siteName: 'Slay Jeans',
+    siteName: 'Velor House',
   },
 };
 

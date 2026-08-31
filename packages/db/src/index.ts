@@ -1,6 +1,6 @@
 /**
  * Shared Prisma client for all apps (API, workers, scripts).
- * Import from `@slay/db`:
+ * Import from `@slay/db` (internal workspace package name, unrelated to the brand):
  *
  *   import { prisma, Prisma, OrderStatus } from '@slay/db';
  */

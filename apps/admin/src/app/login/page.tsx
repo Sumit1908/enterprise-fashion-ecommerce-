@@ -31,7 +31,7 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="w-full max-w-sm rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-8 shadow-sm"
       >
-        <h1 className="text-lg font-semibold">Slay Jeans Admin</h1>
+        <h1 className="text-lg font-semibold">Velor House Admin</h1>
         <p className="mt-1 text-sm text-[var(--color-muted)]">Sign in to manage your store.</p>
 
         <label className="mt-6 block text-sm font-medium">Email</label>

@@ -54,7 +54,7 @@ export class NewsletterController {
   @RequirePermissions('promotion:read')
   @Get('admin/newsletter/export.csv')
   @Header('Content-Type', 'text/csv; charset=utf-8')
-  @Header('Content-Disposition', 'attachment; filename="slay-newsletter.csv"')
+  @Header('Content-Disposition', 'attachment; filename="velorhouse-newsletter.csv"')
   adminExport() {
     return this.newsletter.adminExportCsv();
   }

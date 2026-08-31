@@ -121,7 +121,7 @@ pnpm infra:up
 | Adminer | 8080 | Web UI to inspect the database |
 
 Then set `DATABASE_URL` and `DIRECT_URL` to
-`postgresql://slay:slay@localhost:5432/slay_jeans?schema=public`.
+`postgresql://velor:velor@localhost:5432/velor_house?schema=public`.
 Stop later with `pnpm infra:down`. Data is kept between restarts.
 
 ---
@@ -208,9 +208,9 @@ Until every admin screen is built (see `ROADMAP.md`), you can edit these directl
 Each app has a Dockerfile built from the repo root:
 
 ```bash
-docker build -f apps/api/Dockerfile   -t slay-api   .
-docker build -f apps/web/Dockerfile   -t slay-web   --build-arg NEXT_PUBLIC_API_URL=https://api.example.com .
-docker build -f apps/admin/Dockerfile -t slay-admin --build-arg NEXT_PUBLIC_API_URL=https://api.example.com .
+docker build -f apps/api/Dockerfile   -t velor-api   .
+docker build -f apps/web/Dockerfile   -t velor-web   --build-arg NEXT_PUBLIC_API_URL=https://api.example.com .
+docker build -f apps/admin/Dockerfile -t velor-admin --build-arg NEXT_PUBLIC_API_URL=https://api.example.com .
 ```
 
 > The web/admin images use Next.js `output: 'standalone'`, which is enabled only

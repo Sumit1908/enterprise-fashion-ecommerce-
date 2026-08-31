@@ -59,7 +59,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Slay Jeans API')
+    .setTitle('Velor House API')
     .setDescription('Storefront + admin + mobile API')
     .setVersion('1.0')
     .addBearerAuth()

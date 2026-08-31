@@ -83,10 +83,10 @@ export class NewsletterService {
     const hi = firstName ? `Hi ${escapeHtml(firstName)},` : 'Hi there,';
     await this.email.send({
       to: email,
-      subject: 'Welcome to the Slay Jeans list',
+      subject: 'Welcome to the Velor House list',
       html: `
         <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;color:#191512">
-          <p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#a5813f">Slay Jeans</p>
+          <p style="letter-spacing:.2em;text-transform:uppercase;font-size:12px;color:#a5813f">Velor House</p>
           <h1 style="font-size:26px;font-weight:500">You're on the list.</h1>
           <p style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#5f574e">
             ${hi} thanks for signing up. You'll be first to hear about new washes, restocks and

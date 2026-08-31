@@ -11,7 +11,7 @@ export function BrandStory() {
             Made for the everyday icon
           </h2>
           <p className="mt-6 text-[0.95rem] leading-relaxed text-[var(--color-ink-soft)]">
-            Slay Jeans began with one idea: denim should be considered. The right weight, an
+            Velor House began with one idea: denim should be considered. The right weight, an
             honest wash, a fit that holds its shape from morning to midnight. Every pair is
             designed in-house and made in small, limited runs.
           </p>

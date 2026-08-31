@@ -32,7 +32,7 @@ export function MobileNav({ tree }: { tree: CategoryNode[] }) {
             <div className="absolute inset-0 bg-black/45" onClick={() => setOpen(false)} aria-hidden />
             <nav className="relative flex w-[86%] max-w-sm flex-col bg-[var(--color-paper)] shadow-2xl">
               <div className="flex items-center justify-between border-b border-[var(--color-sand)] px-5 py-4">
-                <span className="font-display text-lg uppercase tracking-[0.2em]">Slay&nbsp;Jeans</span>
+                <span className="font-display text-lg uppercase tracking-[0.2em]">Velor&nbsp;House</span>
                 <button
                   type="button"
                   aria-label="Close menu"

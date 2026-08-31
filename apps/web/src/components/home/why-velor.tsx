@@ -20,10 +20,10 @@ const PILLARS: { title: string; body: string }[] = [
   },
 ];
 
-export function WhySlay() {
+export function WhyVelor() {
   return (
     <section className="container-wide py-16 lg:py-20">
-      <SectionHeader eyebrow="Why Slay" title="Denim, done properly" />
+      <SectionHeader eyebrow="Why Velor House" title="Denim, done properly" />
       <div className="grid gap-px overflow-hidden border border-[var(--color-sand)] bg-[var(--color-sand)] sm:grid-cols-2 lg:grid-cols-4">
         {PILLARS.map((pillar, i) => (
           <Reveal key={pillar.title} delay={i * 70} className="bg-[var(--color-bone)] p-7 lg:p-8">

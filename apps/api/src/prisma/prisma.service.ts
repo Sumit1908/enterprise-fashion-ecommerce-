@@ -31,7 +31,7 @@ const JOINABLE_OPS = new Set([
 
 function createPrismaClient() {
   return new PrismaClient().$extends({
-    name: 'slay-prisma',
+    name: 'velor-prisma',
     query: {
       async $allOperations({ args, query, operation }) {
         // Fetch related records with one LATERAL-joined query instead of a

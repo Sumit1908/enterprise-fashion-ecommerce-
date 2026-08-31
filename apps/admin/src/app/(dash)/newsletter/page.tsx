@@ -58,7 +58,7 @@ export default function NewsletterPage() {
           <Button
             variant="ghost"
             className="mt-1"
-            onClick={() => apiDownload('/admin/newsletter/export.csv', 'slay-newsletter.csv')}
+            onClick={() => apiDownload('/admin/newsletter/export.csv', 'velorhouse-newsletter.csv')}
           >
             Download CSV
           </Button>

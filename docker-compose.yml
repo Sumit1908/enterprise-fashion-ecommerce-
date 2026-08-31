@@ -1,29 +1,29 @@
-# Local infrastructure for Slay Jeans.
+# Local infrastructure for Velor House.
 # Usage:  docker compose up -d      (start)   /   docker compose down   (stop)
 # Data persists in named volumes below.
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: slay-postgres
+    container_name: velor-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: slay
-      POSTGRES_PASSWORD: slay
-      POSTGRES_DB: slay_jeans
+      POSTGRES_USER: velor
+      POSTGRES_PASSWORD: velor
+      POSTGRES_DB: velor_house
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U slay -d slay_jeans"]
+      test: ["CMD-SHELL", "pg_isready -U velor -d velor_house"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: slay-redis
+    container_name: velor-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
@@ -38,7 +38,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-    container_name: slay-elasticsearch
+    container_name: velor-elasticsearch
     restart: unless-stopped
     environment:
       - discovery.type=single-node
@@ -57,12 +57,12 @@ services:
   # S3-compatible local storage (stand-in for AWS S3 during development).
   minio:
     image: minio/minio:latest
-    container_name: slay-minio
+    container_name: velor-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: slay
-      MINIO_ROOT_PASSWORD: slaysecret
+      MINIO_ROOT_USER: velor
+      MINIO_ROOT_PASSWORD: velorsecret
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -72,7 +72,7 @@ services:
   # Optional GUI for the database at http://localhost:8080
   adminer:
     image: adminer:latest
-    container_name: slay-adminer
+    container_name: velor-adminer
     restart: unless-stopped
     ports:
       - "8080:8080"

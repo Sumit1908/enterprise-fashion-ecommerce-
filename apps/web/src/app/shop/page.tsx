@@ -11,7 +11,7 @@ interface PageProps {
 
 export const metadata: Metadata = {
   title: 'Shop All',
-  description: 'Browse the full Slay Jeans collection for Men, Women and Kids.',
+  description: 'Browse the full Velor House collection for Men, Women and Kids.',
 };
 
 const FILTER_KEYS = ['sort', 'brand', 'minPrice', 'maxPrice', 'gender', 'inStock', 'size', 'color', 'sub'] as const;

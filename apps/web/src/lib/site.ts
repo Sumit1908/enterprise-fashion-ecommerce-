@@ -1,5 +1,5 @@
 /**
- * Single source of truth for Slay Jeans business + contact details used across
+ * Single source of truth for Velor House business + contact details used across
  * the storefront (footer, contact page, policy pages, structured data).
  *
  * Only details the business owner has provided are here. No GSTIN, PAN, CIN,
@@ -7,12 +7,12 @@
  * add those here (and to the policy pages) once they are available.
  */
 export const SITE = {
-  name: 'Slay Jeans',
+  name: 'Velor House',
   tagline: 'Denim, redefined.',
   description:
     'Premium denim and fashion for Men, Women and Kids. New washes, considered fits, limited runs.',
 
-  email: 'slayjeans@gmail.com',
+  email: 'velorhouse@gmail.com',
   // Display + tel/wa link forms of the same number.
   phoneDisplay: '+91 93367 91807',
   phoneE164: '+919336791807',

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Slay Jeans — Admin',
+  title: 'Velor House — Admin',
   robots: { index: false, follow: false },
 };
 

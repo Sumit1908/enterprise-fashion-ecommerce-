@@ -10,7 +10,7 @@ export function EditorialCampaign({ image }: { image: string | null }) {
           {image && (
             <Image
               src={image}
-              alt="Slay Jeans denim campaign"
+              alt="Velor House denim campaign"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover object-center"

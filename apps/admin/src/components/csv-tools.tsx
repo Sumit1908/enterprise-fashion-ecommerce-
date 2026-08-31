@@ -21,7 +21,7 @@ export function CsvTools({ onImported }: { onImported: () => void }) {
     setBusy('export');
     setError(null);
     try {
-      await apiDownload('/admin/products/export.csv', 'slay-products.csv');
+      await apiDownload('/admin/products/export.csv', 'velorhouse-products.csv');
     } catch (e) {
       setError((e as Error).message);
     } finally {

@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   try {
     const c = await api.collection(slug);
-    return { title: c.name, description: c.description ?? `Shop the ${c.name} collection at Slay Jeans.` };
+    return { title: c.name, description: c.description ?? `Shop the ${c.name} collection at Velor House.` };
   } catch {
     return { title: 'Collection' };
   }

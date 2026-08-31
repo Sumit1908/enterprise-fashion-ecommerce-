@@ -71,7 +71,7 @@ export const envSchema = z.object({
   BLUEDART_LICENSE_KEY: z.string().optional(),
 
   EMAIL_PROVIDER: z.enum(['smtp', 'ses', 'resend']).default('smtp'),
-  EMAIL_FROM: z.string().default('Slay Jeans <slayjeans@gmail.com>'),
+  EMAIL_FROM: z.string().default('Velor House <velorhouse@gmail.com>'),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional(),

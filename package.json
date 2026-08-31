@@ -1,8 +1,8 @@
 {
-  "name": "slay-jeans",
+  "name": "velor-house",
   "version": "0.1.0",
   "private": true,
-  "description": "Slay Jeans — enterprise fashion e-commerce platform (storefront, admin, API).",
+  "description": "Velor House — enterprise fashion e-commerce platform (storefront, admin, API).",
   "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=22.0.0",

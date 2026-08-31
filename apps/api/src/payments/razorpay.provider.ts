@@ -53,7 +53,7 @@ export class RazorpayProvider implements PaymentProvider {
       currency: input.currency,
       clientConfig: {
         keyId: env.RAZORPAY_KEY_ID,
-        name: 'Slay Jeans',
+        name: 'Velor House',
         prefill: { email: input.customer.email, contact: input.customer.phone, name: input.customer.name },
       },
     };

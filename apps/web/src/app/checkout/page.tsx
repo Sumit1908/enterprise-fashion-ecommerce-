@@ -417,7 +417,7 @@ async function payWithRazorpay(
     order_id: payment.providerOrderId,
     amount: Math.round(payment.amount * 100),
     currency: payment.currency,
-    name: cfg.name ?? 'Slay Jeans',
+    name: cfg.name ?? 'Velor House',
     prefill,
     theme: { color: '#14110f' },
     handler: async (resp: {

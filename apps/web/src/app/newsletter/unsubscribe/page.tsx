@@ -21,7 +21,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <p className="eyebrow">Newsletter</p>
       <div className="mt-4 text-sm text-[var(--color-ink-soft)]">{children}</div>
       <Link href="/" className="link-underline mt-8 inline-block text-xs font-semibold uppercase tracking-[0.14em]">
-        Back to Slay Jeans
+        Back to Velor House
       </Link>
     </div>
   );

@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const category = (await api.category(slug)) as { name: string; seo?: { metaTitle?: string; metaDescription?: string } };
     return {
       title: category.seo?.metaTitle ?? category.name,
-      description: category.seo?.metaDescription ?? `Shop ${category.name} at Slay Jeans.`,
+      description: category.seo?.metaDescription ?? `Shop ${category.name} at Velor House.`,
     };
   } catch {
     return { title: 'Category' };

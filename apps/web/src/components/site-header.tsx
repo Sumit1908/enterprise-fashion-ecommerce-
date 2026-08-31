@@ -44,7 +44,7 @@ export async function SiteHeader() {
             href="/"
             className="font-display text-[1.35rem] uppercase tracking-[0.2em] text-[var(--color-ink)] lg:text-[1.5rem]"
           >
-            Slay&nbsp;Jeans
+            Velor&nbsp;House
           </Link>
 
           <SiteNav tree={tree} />

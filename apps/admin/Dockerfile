@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build from the repository root:
-#   docker build -f apps/admin/Dockerfile -t slay-admin .
+#   docker build -f apps/admin/Dockerfile -t velor-admin .
 
 FROM node:22-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate

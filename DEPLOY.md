@@ -1,6 +1,8 @@
-# Deploying Slay Jeans to GitHub + Render
+# Deploying Velor House to GitHub + Render
 
-Three services get deployed, all from this one repo:
+Three services get deployed, all from this one repo. The Render service names stay
+`slay-jeans-*` so the existing `*.onrender.com` URLs keep working — only the brand
+shown on the site has changed to **Velor House**.
 
 | Service | What it is | URL (after deploy) |
 |---|---|---|
@@ -54,7 +56,7 @@ Render will ask for the env vars marked "will be set later". Enter:
 | `DATABASE_URL` | your Neon **direct/unpooled** connection string (see below) |
 | `DIRECT_URL` | the same string as `DATABASE_URL` |
 | `SMTP_HOST` | *(optional)* `smtp.gmail.com` — or leave blank for now |
-| `SMTP_USER` | *(optional)* `slayjeans@gmail.com` |
+| `SMTP_USER` | *(optional)* `velorhouse@gmail.com` |
 | `SMTP_PASSWORD` | *(optional)* a Google **App Password** (not your normal password) |
 
 **Neon connection string:** in the Neon dashboard → your project → *Connection

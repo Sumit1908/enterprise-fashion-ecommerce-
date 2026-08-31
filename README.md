@@ -1,11 +1,11 @@
-# Slay Jeans
+# Velor House
 
 Enterprise fashion e-commerce platform — premium storefront, admin dashboard, and a
 database-driven API. Products, categories, collections, banners, homepage sections,
 coupons, blog posts, landing pages and store settings are all managed as **data**, not code.
 
 ```
-slay-jeans/
+velor-house/
 ├─ apps/
 │  ├─ web/      Customer storefront          (Next.js 15, Tailwind 4)   → http://localhost:3000
 │  ├─ admin/    Admin & Super Admin console  (Next.js 15)               → http://localhost:3001

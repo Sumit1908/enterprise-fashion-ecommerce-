@@ -300,9 +300,9 @@ async function seedCatalogStructure() {
 
 async function seedSettings() {
   const settings: Array<[string, string, unknown, string]> = [
-    ['general', 'store.name', 'Slay Jeans', 'Store name'],
+    ['general', 'store.name', 'Velor House', 'Store name'],
     ['general', 'store.tagline', 'Denim, redefined.', 'Tagline'],
-    ['general', 'store.supportEmail', 'slayjeans@gmail.com', 'Support email'],
+    ['general', 'store.supportEmail', 'velorhouse@gmail.com', 'Support email'],
     ['general', 'store.supportPhone', '+91 93367 91807', 'Support phone / WhatsApp'],
     ['general', 'store.whatsapp', '+919336791807', 'WhatsApp number (E.164)'],
     ['general', 'store.addressLine1', 'Lalganj Ajhara', 'Business address line 1'],
@@ -320,8 +320,8 @@ async function seedSettings() {
     ['shipping', 'shipping.freeShippingThreshold', 999, 'Free shipping above'],
     ['shipping', 'shipping.defaultProvider', 'shiprocket', 'Default courier aggregator'],
     ['tax', 'tax.pricesIncludeTax', true, 'Displayed prices include tax'],
-    ['seo', 'seo.defaultTitleTemplate', '%s | Slay Jeans', 'Title template'],
-    ['seo', 'seo.defaultMetaDescription', 'Shop premium denim and fashion at Slay Jeans.', 'Default meta description'],
+    ['seo', 'seo.defaultTitleTemplate', '%s | Velor House', 'Title template'],
+    ['seo', 'seo.defaultMetaDescription', 'Shop premium denim and fashion at Velor House.', 'Default meta description'],
     ['security', 'security.otpLoginEnabled', true, 'Enable OTP login'],
     ['loyalty', 'loyalty.pointsPerCurrency', 1, 'Points earned per ₹1 spent'],
     ['loyalty', 'loyalty.redeemValue', 0.25, '₹ value of 1 point on redemption'],
@@ -383,7 +383,7 @@ async function seedHomepage() {
     { type: 'LOOKBOOK', title: 'Style Inspiration', position: 7 },
     { type: 'TOP_RATED', title: 'Top Rated', position: 8, config: { limit: 12 } },
     { type: 'TESTIMONIALS', title: 'What Our Customers Say', position: 9 },
-    { type: 'INSTAGRAM', title: '@slayjeans', position: 10 },
+    { type: 'INSTAGRAM', title: '@velorhouse', position: 10 },
     { type: 'NEWSLETTER', title: 'Join the List', position: 11 },
   ];
   for (const s of sections) {
@@ -651,7 +651,7 @@ const CATALOG: CatItem[] = [
 ];
 
 async function seedCatalog() {
-  const brands = ['Slay Originals', 'Indigo Lab', 'Metro Ave', 'Northbound'];
+  const brands = ['Velor Originals', 'Indigo Lab', 'Metro Ave', 'Northbound'];
   const brandRecords = await Promise.all(
     brands.map((name) =>
       prisma.brand.upsert({
@@ -848,7 +848,7 @@ async function seedTestimonials() {
 }
 
 async function main() {
-  console.log('Seeding Slay Jeans...');
+  console.log('Seeding Velor House...');
   await seedRbac();
   await seedSuperAdmin();
   await seedCatalogStructure();

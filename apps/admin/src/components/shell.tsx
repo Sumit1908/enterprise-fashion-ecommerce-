@@ -41,7 +41,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <aside className="hidden w-60 shrink-0 border-r border-[var(--color-line)] bg-[var(--color-surface)] p-4 md:block">
         <div className="px-2 py-3 text-sm font-semibold">
-          Slay<span className="text-[var(--color-brand)]">Jeans</span> Admin
+          Velor<span className="text-[var(--color-brand)]">House</span> Admin
         </div>
         <nav className="mt-4 space-y-1">
           {NAV.map((item) => {

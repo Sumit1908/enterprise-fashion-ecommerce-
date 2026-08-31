@@ -89,7 +89,7 @@ function AccountInner() {
 
   return (
     <div className="container-wide max-w-md py-14">
-      <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Join Slay Jeans'}</p>
+      <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Join Velor House'}</p>
       <h1 className="mt-3 font-display text-3xl sm:text-4xl">
         {mode === 'login' ? 'Sign in' : 'Create account'}
       </h1>

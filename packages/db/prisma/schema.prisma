@@ -1,5 +1,5 @@
 // =============================================================================
-// Slay Jeans — Prisma schema (PostgreSQL)
+// Velor House — Prisma schema (PostgreSQL)
 // -----------------------------------------------------------------------------
 // Everything the storefront and dashboards render is stored here. Adding a
 // product, banner, collection, landing page, coupon, blog post, menu item or

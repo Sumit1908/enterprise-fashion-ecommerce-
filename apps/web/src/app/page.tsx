@@ -7,7 +7,7 @@ import { ProductRail } from '@/components/home/product-rail';
 import { EditorialCampaign } from '@/components/home/editorial-campaign';
 import { ShopByFit } from '@/components/home/shop-by-fit';
 import { BrandStory } from '@/components/home/brand-story';
-import { WhySlay } from '@/components/home/why-slay';
+import { WhyVelor } from '@/components/home/why-velor';
 import { Testimonials } from '@/components/home/testimonials';
 import { Newsletter } from '@/components/home/newsletter';
 
@@ -78,7 +78,7 @@ export default async function HomePage() {
         <HeroSlider slides={heroSlides} />
       ) : (
         <section className="container-wide py-24">
-          <h1 className="font-display text-4xl">Slay Jeans</h1>
+          <h1 className="font-display text-4xl">Velor House</h1>
         </section>
       )}
 
@@ -112,7 +112,7 @@ export default async function HomePage() {
 
       <BrandStory />
 
-      <WhySlay />
+      <WhyVelor />
 
       <Testimonials items={home.testimonials} title={tSection?.title} />
 

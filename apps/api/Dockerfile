@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build from the repository root:
-#   docker build -f apps/api/Dockerfile -t slay-api .
+#   docker build -f apps/api/Dockerfile -t velor-api .
 
 FROM node:22-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate

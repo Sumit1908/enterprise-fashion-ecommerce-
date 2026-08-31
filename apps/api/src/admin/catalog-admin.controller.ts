@@ -48,7 +48,7 @@ export class CatalogAdminController {
   @Get('products/export.csv')
   @RequirePermissions('product:read')
   @Header('Content-Type', 'text/csv; charset=utf-8')
-  @Header('Content-Disposition', 'attachment; filename="slay-products.csv"')
+  @Header('Content-Disposition', 'attachment; filename="velorhouse-products.csv"')
   exportCsv() {
     return this.service.exportProductsCsv();
   }

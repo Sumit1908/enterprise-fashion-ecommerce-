@@ -17,20 +17,20 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: slay
-          POSTGRES_PASSWORD: slay
-          POSTGRES_DB: slay_jeans_test
+          POSTGRES_USER: velor
+          POSTGRES_PASSWORD: velor
+          POSTGRES_DB: velor_house_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U slay -d slay_jeans_test"
+          --health-cmd "pg_isready -U velor -d velor_house_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://slay:slay@localhost:5432/slay_jeans_test?schema=public
-      DIRECT_URL: postgresql://slay:slay@localhost:5432/slay_jeans_test?schema=public
+      DATABASE_URL: postgresql://velor:velor@localhost:5432/velor_house_test?schema=public
+      DIRECT_URL: postgresql://velor:velor@localhost:5432/velor_house_test?schema=public
       JWT_ACCESS_SECRET: ci-access-secret-not-used-in-prod
       JWT_REFRESH_SECRET: ci-refresh-secret-not-used-in-prod
       COOKIE_SECRET: ci-cookie-secret-not-used-in-prod
