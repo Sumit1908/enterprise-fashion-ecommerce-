@@ -51,7 +51,7 @@ services:
       - key: ADMIN_URL
         value: https://slay-jeans-admin.onrender.com
       - key: CORS_ALLOWED_ORIGINS
-        value: https://slay-jeans-web.onrender.com,https://slay-jeans-admin.onrender.com
+        value: https://slay-jeans-web.onrender.com,https://slay-jeans-admin.onrender.com,https://velorhouse.in,https://www.velorhouse.in
       - key: EMAIL_FROM
         value: Velor House <velorhouse@gmail.com>
       - key: SMTP_HOST # optional — leave unset to skip sending emails
