@@ -70,7 +70,7 @@ export function SiteFooter() {
             Velor<span className="text-[var(--color-accent)]">&nbsp;House</span>
           </p>
           <p className="mt-4 text-sm leading-relaxed text-[var(--color-ink-soft)]">
-            Considered fashion for men, women and kids — designed in-house, made to last.
+            Timeless style for every generation — thoughtfully designed, beautifully made.
           </p>
           <Link
             href="/#the-list"

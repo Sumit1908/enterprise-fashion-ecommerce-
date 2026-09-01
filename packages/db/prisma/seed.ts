@@ -421,9 +421,10 @@ async function seedHomepage() {
   // (no external host / object storage needed).
   const heroSlides = [
     {
-      title: 'Pure Linen',
-      headline: 'Warm-Weather Linen',
-      subheadline: 'Breathable linen shirts and easy trousers, made for the sun.',
+      title: 'Everyday Essentials',
+      headline: 'Made for the Way You Move',
+      subheadline:
+        'Thoughtfully designed essentials for everyday living — refined in detail, effortless in style.',
       ctaLabel: 'Shop Shirts',
       ctaUrl: '/c/men-shirts',
       imageUrl: '/hero-1.jpg',

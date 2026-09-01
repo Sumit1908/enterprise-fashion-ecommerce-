@@ -198,7 +198,7 @@ function HeroSlideRow({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Eyebrow / label" hint="Small text above the headline">
-          <Input value={v.title ?? ''} onChange={(e) => set('title', e.target.value)} placeholder="Pure Linen" />
+          <Input value={v.title ?? ''} onChange={(e) => set('title', e.target.value)} placeholder="e.g. New Season" />
         </Field>
         <Field label="CTA button label">
           <Input value={v.ctaLabel ?? ''} onChange={(e) => set('ctaLabel', e.target.value)} placeholder="Shop now" />
