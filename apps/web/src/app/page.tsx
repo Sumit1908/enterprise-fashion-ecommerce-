@@ -7,7 +7,6 @@ import { ProductRail } from '@/components/home/product-rail';
 import { ShopByFit } from '@/components/home/shop-by-fit';
 import { BrandStory } from '@/components/home/brand-story';
 import { WhyVelor } from '@/components/home/why-velor';
-import { Testimonials } from '@/components/home/testimonials';
 import { Newsletter } from '@/components/home/newsletter';
 
 export const revalidate = 30;
@@ -62,7 +61,6 @@ export default async function HomePage() {
 
   const naSection = sectionByType(home, 'NEW_ARRIVALS');
   const bsSection = sectionByType(home, 'BEST_SELLERS');
-  const tSection = sectionByType(home, 'TESTIMONIALS');
   const nSection = sectionByType(home, 'NEWSLETTER');
 
   return (
@@ -104,8 +102,6 @@ export default async function HomePage() {
       <BrandStory />
 
       <WhyVelor />
-
-      <Testimonials items={home.testimonials} title={tSection?.title} />
 
       <Newsletter title={nSection?.title} />
 
