@@ -33,9 +33,9 @@ export function ProductRail({
           ctaLabel={ctaLabel}
           ctaHref={ctaHref}
         />
-        <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 items-stretch gap-x-4 gap-y-10 md:grid-cols-3 lg:grid-cols-4">
           {products.map((p, i) => (
-            <Reveal key={p.id} delay={(i % 4) * 70}>
+            <Reveal key={p.id} delay={(i % 4) * 70} className="h-full">
               <ProductCard product={p} priority={priority && i === 0} />
             </Reveal>
           ))}

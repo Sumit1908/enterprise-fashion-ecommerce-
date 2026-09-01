@@ -192,9 +192,9 @@ const U = (id: string, w = 900) =>
 // Consistent, clean editorial imagery. Replace any of these from the admin
 // (Categories & Collections -> edit -> image) once real photography exists.
 const CATEGORY_IMAGE: Record<string, string> = {
-  Men: U('1542272604-787c3835535d'),
-  Women: U('1475178626620-a4d074967452'),
-  Kids: U('1471286174890-9c112ffca5b4'),
+  Men: U('1516257984-b1b4d707412e'),
+  Women: U('1495385794356-15371f348c31'),
+  Kids: U('1518831959646-742c3a14ebf7'),
   Footwear: U('1549298916-b41d501d3772'),
   Watches: U('1483118714900-540cf339fd46'),
   Bags: U('1548036328-c9fa89d128fa'),
@@ -836,13 +836,17 @@ async function syncMenuVisibility() {
 
 async function seedTestimonials() {
   const items = [
-    { authorName: 'Aarav S.', quote: 'Best-fitting jeans I have owned. The wash looks even better in person.' },
-    { authorName: 'Meera K.', quote: 'Fast delivery and the size guide was spot on. Ordering again.' },
-    { authorName: 'Rohan D.', quote: 'Premium quality for the price. The selvedge pair is a staple now.' },
+    { authorName: 'Aarav S.', authorRole: 'Menswear', quote: 'Best-fitting jeans I have owned. The wash looks even better in person.' },
+    { authorName: 'Priya N.', authorRole: 'Womenswear', quote: 'The wrap dress is beautifully cut and the fabric feels expensive. My new favourite.' },
+    { authorName: 'Meera K.', authorRole: 'Kids', quote: 'Ordered for both my kids — soft cotton, held up through a dozen washes. Delivery was quick too.' },
+    { authorName: 'Rohan D.', authorRole: 'Shirts', quote: 'The linen shirts are exactly right for the weather — breathable, and they still look sharp.' },
+    { authorName: 'Ananya R.', authorRole: 'Shoes', quote: 'Comfortable straight out of the box and they go with everything. Sizing was accurate.' },
+    { authorName: 'Kabir M.', authorRole: 'Accessories', quote: 'The leather belt and wallet feel genuinely premium for the price. Easy returns made it low-risk.' },
   ];
   for (const [i, t] of items.entries()) {
     const existing = await prisma.testimonial.findFirst({ where: { authorName: t.authorName } });
     if (!existing) await prisma.testimonial.create({ data: { ...t, position: i } });
+    else await prisma.testimonial.update({ where: { id: existing.id }, data: { authorRole: t.authorRole, quote: t.quote, position: i } });
   }
   console.log(`  Testimonials: ${items.length}`);
 }

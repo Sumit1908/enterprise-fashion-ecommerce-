@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { SITE } from '@/lib/site';
-import { NewsletterForm } from '@/components/newsletter-form';
 
 const columns: { title: string; links: { label: string; href: string; external?: boolean }[] }[] = [
   {
@@ -64,17 +63,21 @@ const Heading = ({ children }: { children: React.ReactNode }) => (
 export function SiteFooter() {
   return (
     <footer className="mt-24 bg-[var(--color-footer)] text-[var(--color-ink)]">
-      <div className="container-wide grid gap-12 py-16 lg:grid-cols-[1.5fr_repeat(3,1fr)_1.1fr] lg:gap-10 lg:py-20">
-        {/* Newsletter */}
+      <div className="container-wide grid gap-12 py-16 lg:grid-cols-[1.4fr_repeat(3,1fr)_1.1fr] lg:gap-10 lg:py-20">
+        {/* Brand */}
         <div className="max-w-sm">
           <p className="font-display text-2xl uppercase tracking-[0.16em] text-[var(--color-ink)]">
             Velor<span className="text-[var(--color-accent)]">&nbsp;House</span>
           </p>
           <p className="mt-4 text-sm leading-relaxed text-[var(--color-ink-soft)]">
-            Premium denim, considered fits and limited runs. Sign up for early access to new
-            washes, restocks and members-only pricing.
+            Considered fashion for men, women and kids — designed in-house, made to last.
           </p>
-          <NewsletterForm source="footer" variant="footer" />
+          <Link
+            href="/#the-list"
+            className="mt-5 inline-block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink)] link-underline"
+          >
+            Join the list
+          </Link>
         </div>
 
         {/* Link columns */}

@@ -16,7 +16,7 @@ async function getTree(): Promise<CategoryNode[]> {
 const ANNOUNCEMENTS = [
   'Complimentary shipping on orders over ₹999',
   'Easy 7-day returns · Cash on Delivery available',
-  'New in: The Autumn Denim Drop',
+  'New season, new arrivals — for men, women & kids',
 ];
 
 export async function SiteHeader() {

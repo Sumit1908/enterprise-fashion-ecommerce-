@@ -4,7 +4,6 @@ import { HeroSlider } from '@/components/home/hero-slider';
 import { TrustBar } from '@/components/home/trust-bar';
 import { CategoryShowcase } from '@/components/home/category-showcase';
 import { ProductRail } from '@/components/home/product-rail';
-import { EditorialCampaign } from '@/components/home/editorial-campaign';
 import { ShopByFit } from '@/components/home/shop-by-fit';
 import { BrandStory } from '@/components/home/brand-story';
 import { WhyVelor } from '@/components/home/why-velor';
@@ -61,12 +60,6 @@ export default async function HomePage() {
   const bestSource = best.length ? best : pool;
   const bestSellers = take(bestSource, 4, naIds).length >= 3 ? take(bestSource, 4, naIds) : take(bestSource, 4);
 
-  const campaignImage =
-    pool.find((p) => /selvedge|indigo|premium/i.test(p.name))?.media[0]?.url ??
-    pool[0]?.media[0]?.url ??
-    heroSlides[0]?.imageUrl ??
-    null;
-
   const naSection = sectionByType(home, 'NEW_ARRIVALS');
   const bsSection = sectionByType(home, 'BEST_SELLERS');
   const tSection = sectionByType(home, 'TESTIMONIALS');
@@ -89,26 +82,24 @@ export default async function HomePage() {
       <ProductRail
         eyebrow="Just landed"
         title={naSection?.title || 'New Arrivals'}
-        description={naSection?.subtitle || 'The latest washes and fits, fresh off the line.'}
+        description={naSection?.subtitle || 'The newest pieces across menswear, womenswear and kids.'}
         ctaLabel={naSection?.ctaLabel || 'View all'}
         ctaHref={naSection?.ctaUrl || '/collections/new-arrivals'}
         products={newArrivals}
         priority
       />
 
-      <EditorialCampaign image={campaignImage} />
-
       <ProductRail
         eyebrow="Tried & loved"
         title={bsSection?.title || 'Best Sellers'}
-        description={bsSection?.subtitle || 'The pairs our clients keep coming back for.'}
-        ctaLabel={bsSection?.ctaLabel || 'Shop all denim'}
+        description={bsSection?.subtitle || 'The styles our customers keep coming back for.'}
+        ctaLabel={bsSection?.ctaLabel || 'Shop all'}
         ctaHref={bsSection?.ctaUrl || '/shop'}
         products={bestSellers}
         tone="paper"
       />
 
-      <ShopByFit pool={pool} />
+      <ShopByFit />
 
       <BrandStory />
 

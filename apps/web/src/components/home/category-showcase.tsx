@@ -18,11 +18,11 @@ const IMG = (id: string) =>
   `https://images.unsplash.com/photo-${id}?w=900&q=80&auto=format&fit=crop`;
 
 const FALLBACK: Record<string, string> = {
-  '/c/men': IMG('1542272604-787c3835535d'),
-  '/c/women': IMG('1475178626620-a4d074967452'),
-  '/c/kids': IMG('1471286174890-9c112ffca5b4'),
+  '/c/men': IMG('1516257984-b1b4d707412e'),
+  '/c/women': IMG('1495385794356-15371f348c31'),
+  '/c/kids': IMG('1518831959646-742c3a14ebf7'),
 };
-const GENERIC_FALLBACK = IMG('1604176354204-9268737828e4');
+const GENERIC_FALLBACK = IMG('1441984904996-e0b6ba687e04');
 
 export function CategoryShowcase({ tiles }: { tiles: CategoryTile[] }) {
   const items = tiles.filter((t) => t.label && t.url).slice(0, 6);
@@ -33,7 +33,7 @@ export function CategoryShowcase({ tiles }: { tiles: CategoryTile[] }) {
       <SectionHeader
         eyebrow="Wardrobe"
         title="Shop by Category"
-        description="Denim and essentials, organised the way you actually shop."
+        description="Menswear, womenswear and kids — organised the way you actually shop."
       />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {items.map((tile, i) => {
@@ -50,11 +50,10 @@ export function CategoryShowcase({ tiles }: { tiles: CategoryTile[] }) {
                     alt={tile.label ?? ''}
                     fill
                     sizes="(max-width: 640px) 50vw, 33vw"
-                    className="object-cover object-center opacity-90 grayscale transition-all duration-[900ms] ease-out group-hover:scale-105 group-hover:opacity-100 group-hover:grayscale-0"
+                    className="object-cover object-center transition-transform duration-[900ms] ease-out group-hover:scale-105"
                   />
                 )}
-                <span className="absolute inset-0 bg-[var(--color-indigo-deep)]/25 mix-blend-multiply transition-opacity duration-700 group-hover:opacity-0" />
-                <span className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                 <span className="absolute inset-x-0 bottom-0 flex items-center justify-between p-4 sm:p-5">
                   <span className="font-display text-lg text-[var(--color-bone)] sm:text-xl">
                     {tile.label}

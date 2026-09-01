@@ -3,21 +3,16 @@ import Link from 'next/link';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Reveal } from '@/components/ui/reveal';
 import { FITS } from '@/lib/fits';
-import type { ProductCard } from '@/lib/api';
 
-export function ShopByFit({ pool }: { pool: ProductCard[] }) {
-  const tiles = FITS.map((fit) => {
-    const match = pool.find((p) =>
-      fit.match.some((m) => p.name.toLowerCase().includes(m)),
-    );
-    return { ...fit, image: match?.media[0]?.url ?? null };
-  });
+export function ShopByFit() {
+  // Curated, consistent denim imagery so the five tiles read as one set.
+  const tiles = FITS;
 
   return (
     <section id="shop-by-fit" className="container-wide py-16 lg:py-20">
       <SectionHeader
         eyebrow="Find your fit"
-        title="Shop by Fit"
+        title="Shop Denim by Fit"
         description="Every silhouette we cut, from sculpted skinny to an architectural wide leg."
       />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
@@ -25,15 +20,13 @@ export function ShopByFit({ pool }: { pool: ProductCard[] }) {
           <Reveal key={tile.query} delay={i * 60}>
             <Link href={`/search?q=${tile.query}`} className="group block">
               <div className="relative aspect-[3/4] overflow-hidden bg-[var(--color-sand)]">
-                {tile.image && (
-                  <Image
-                    src={tile.image}
-                    alt={`${tile.label} fit jeans`}
-                    fill
-                    sizes="(max-width: 640px) 50vw, 20vw"
-                    className="object-cover object-top transition-transform duration-[900ms] ease-out group-hover:scale-105"
-                  />
-                )}
+                <Image
+                  src={tile.image}
+                  alt={`${tile.label} fit jeans`}
+                  fill
+                  sizes="(max-width: 640px) 50vw, 20vw"
+                  className="object-cover object-center transition-transform duration-[900ms] ease-out group-hover:scale-105"
+                />
                 <span className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
               </div>
               <p className="mt-3 font-display text-base">{tile.label}</p>

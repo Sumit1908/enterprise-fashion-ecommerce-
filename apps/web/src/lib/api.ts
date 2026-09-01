@@ -39,7 +39,7 @@ export interface HomeResponse {
     videoUrl: string | null;
     countdownEndsAt: string | null;
   }[];
-  testimonials: { id: string; authorName: string; quote: string; rating: number }[];
+  testimonials: { id: string; authorName: string; authorRole: string | null; quote: string; rating: number }[];
   collections: {
     id: string;
     name: string;

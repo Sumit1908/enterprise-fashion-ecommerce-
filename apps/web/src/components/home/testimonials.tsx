@@ -13,13 +13,17 @@ export function Testimonials({
   return (
     <section className="bg-[var(--color-paper)]">
       <div className="container-wide py-16 lg:py-20">
-        <SectionHeader eyebrow="From our clients" title={title || 'What people are saying'} />
-        <div className="grid gap-6 md:grid-cols-3">
-          {items.slice(0, 3).map((t, i) => (
+        <SectionHeader
+          eyebrow="From our clients"
+          title={title || 'What people are saying'}
+          description="Across menswear, womenswear, kids, shoes and accessories."
+        />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {items.slice(0, 6).map((t, i) => (
             <Reveal
               key={t.id}
-              delay={i * 80}
-              className="flex flex-col border border-[var(--color-sand)] bg-[var(--color-bone)] p-8"
+              delay={(i % 3) * 80}
+              className="flex h-full flex-col border border-[var(--color-sand)] bg-[var(--color-bone)] p-8"
             >
               <span className="font-display text-5xl leading-none text-[var(--color-accent)]">&ldquo;</span>
               <blockquote className="mt-3 flex-1 text-[0.95rem] leading-relaxed text-[var(--color-ink)]">
@@ -29,6 +33,9 @@ export function Testimonials({
                 <div className="text-sm text-[var(--color-accent)]">{'★'.repeat(Math.max(1, Math.min(5, t.rating)))}</div>
                 <figcaption className="mt-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                   {t.authorName}
+                  {t.authorRole && (
+                    <span className="text-[var(--color-ink-mute)]"> · {t.authorRole}</span>
+                  )}
                 </figcaption>
               </div>
             </Reveal>

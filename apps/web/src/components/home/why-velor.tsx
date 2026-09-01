@@ -3,27 +3,27 @@ import { Reveal } from '@/components/ui/reveal';
 
 const PILLARS: { title: string; body: string }[] = [
   {
-    title: 'Considered fits',
-    body: 'A full range of denim silhouettes — slim, straight, relaxed, skinny and wide leg — each refined over repeated wear-tests.',
+    title: 'Considered design',
+    body: 'Denim, shirts, shoes and accessories for the whole family — every silhouette refined over repeated wear-tests before it reaches the site.',
   },
   {
-    title: 'Honest fabric',
-    body: 'Mid-weight cotton with a touch of elastane for recovery, and rigid selvedge where structure matters. No shortcuts in the cloth.',
+    title: 'Honest materials',
+    body: 'Long-staple cottons, real leather and linen, mid-weight denim with the right recovery. No shortcuts in the cloth.',
   },
   {
     title: 'Limited runs',
-    body: 'Made in small batches so we can keep the quality high. When a wash sells through, we move on rather than reprint it.',
+    body: 'Made in small batches so we can keep the quality high. When a style sells through, we move on rather than reprint it.',
   },
   {
     title: 'Easy exchanges',
-    body: 'Free shipping over ₹999, seven-day returns and Cash on Delivery across India. Buying denim online should feel low-risk.',
+    body: 'Free shipping over ₹999, seven-day returns and Cash on Delivery across India. Shopping online should feel low-risk.',
   },
 ];
 
 export function WhyVelor() {
   return (
     <section className="container-wide py-16 lg:py-20">
-      <SectionHeader eyebrow="Why Velor House" title="Denim, done properly" />
+      <SectionHeader eyebrow="Why Velor House" title="Fashion, done properly" />
       <div className="grid gap-px overflow-hidden border border-[var(--color-sand)] bg-[var(--color-sand)] sm:grid-cols-2 lg:grid-cols-4">
         {PILLARS.map((pillar, i) => (
           <Reveal key={pillar.title} delay={i * 70} className="bg-[var(--color-bone)] p-7 lg:p-8">

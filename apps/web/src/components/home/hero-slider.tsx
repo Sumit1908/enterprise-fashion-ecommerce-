@@ -112,7 +112,7 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
                     tabIndex={active ? 0 : -1}
                     className="link-underline text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-bone)]"
                   >
-                    Explore all denim
+                    Explore all new in
                   </Link>
                 </div>
               </div>

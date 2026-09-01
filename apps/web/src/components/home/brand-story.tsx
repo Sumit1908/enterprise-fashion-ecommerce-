@@ -8,21 +8,18 @@ export function BrandStory() {
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="eyebrow">Our Philosophy</p>
           <h2 className="mt-4 font-display text-3xl leading-tight sm:text-5xl">
-            Made for the everyday icon
+            Considered fashion, made to last
           </h2>
           <p className="mt-6 text-[0.95rem] leading-relaxed text-[var(--color-ink-soft)]">
-            Velor House began with one idea: denim should be considered. The right weight, an
-            honest wash, a fit that holds its shape from morning to midnight. Every pair is
-            designed in-house and made in small, limited runs.
+            Velor House began with one idea: everything you wear should be considered. The right
+            fabric, an honest cut, a finish that holds up from morning to midnight — across denim,
+            shirts, shoes and the essentials that go with them, for men, women and kids.
           </p>
           <p className="mt-4 text-[0.95rem] leading-relaxed text-[var(--color-ink-soft)]">
-            When a run sells out, it is genuinely gone. We would rather cut a new pattern than
-            repeat a mediocre one — so the quality stays high and the story stays clear.
+            Every piece is designed in-house and made in small, limited runs. When one sells out,
+            it is genuinely gone — we would rather cut a new pattern than repeat a mediocre one.
           </p>
-          <Link
-            href="/pages/about"
-            className="link-underline mt-8 inline-block text-xs font-semibold uppercase tracking-[0.16em]"
-          >
+          <Link href="/pages/about" className="btn btn-outline mt-9">
             Read our story
           </Link>
         </Reveal>

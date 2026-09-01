@@ -17,7 +17,7 @@ export function ProductCard({
   const rating = product.ratingCount > 0 ? product.ratingAverage : 0;
 
   return (
-    <div className="group flex flex-col">
+    <div className="group flex h-full flex-col">
       <div className="relative overflow-hidden bg-[var(--color-sand)]">
         <Link href={`/p/${product.slug}`} className="block" aria-label={product.name}>
           <div className="relative aspect-[4/5]">
@@ -72,15 +72,15 @@ export function ProductCard({
         </div>
       </div>
 
-      <Link href={`/p/${product.slug}`} className="mt-3.5 flex flex-1 flex-col">
+      <Link href={`/p/${product.slug}`} className="mt-3.5 flex min-w-0 flex-1 flex-col pb-1">
         {product.brand && (
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-mute)]">
+          <p className="truncate text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-mute)]">
             {product.brand.name}
           </p>
         )}
         <h3 className="mt-1 line-clamp-1 text-sm text-[var(--color-ink)]">{product.name}</h3>
 
-        <div className="mt-1.5 flex items-baseline gap-2">
+        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-sm font-semibold text-[var(--color-ink)]">
             {formatPrice(product.salePrice, product.currency)}
           </span>
