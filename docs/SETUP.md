@@ -29,7 +29,7 @@ pnpm dev
 ```
 
 Then open <http://localhost:3000> (shop), <http://localhost:3001> (admin —
-`sumitnnnrealtor@gmail.com` / `ChangeMe!2026`), <http://localhost:4000/api/docs> (API).
+`sumitaastha@velorhouse.in` / `Ugna@19082022`), <http://localhost:4000/api/docs> (API).
 
 Everything below is the from-scratch reference for a new machine or a teammate.
 
@@ -138,8 +138,8 @@ pnpm db:seed         # loads roles, permissions, categories, settings + demo pro
 `pnpm db:seed` prints the **super-admin login** at the end. Default:
 
 ```
-email:    sumitnnnrealtor@gmail.com
-password: ChangeMe!2026
+email:    sumitaastha@velorhouse.in
+password: Ugna@19082022
 ```
 
 Change the password after first login (or set `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`

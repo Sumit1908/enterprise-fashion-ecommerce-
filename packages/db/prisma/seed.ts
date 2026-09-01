@@ -158,7 +158,7 @@ async function seedRbac() {
 }
 
 async function seedSuperAdmin() {
-  const email = process.env.SEED_ADMIN_EMAIL ?? 'sumitnnnrealtor@gmail.com';
+  const email = process.env.SEED_ADMIN_EMAIL ?? 'sumitaastha@velorhouse.in';
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!2026';
   const user = await prisma.user.upsert({
     where: { email },
@@ -167,9 +167,9 @@ async function seedSuperAdmin() {
       kind: 'STAFF',
       status: 'ACTIVE',
       isSuperAdmin: true,
-      firstName: 'Store',
-      lastName: 'Owner',
-      displayName: 'Store Owner',
+      firstName: 'Sumit',
+      lastName: 'Aastha',
+      displayName: 'SumitAastha',
       passwordHash: hashPassword(password),
       emailVerifiedAt: new Date(),
     },
