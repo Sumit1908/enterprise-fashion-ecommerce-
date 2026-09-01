@@ -42,7 +42,7 @@ export function CategoryShowcase({ tiles }: { tiles: CategoryTile[] }) {
             <Reveal key={tile.url} delay={i * 60}>
               <Link
                 href={tile.url!}
-                className="group relative block aspect-[4/5] overflow-hidden bg-[var(--color-indigo-deep)]"
+                className="group relative block aspect-[4/5] overflow-hidden bg-[var(--color-sand)]"
               >
                 {src && (
                   <Image
