@@ -16,7 +16,7 @@ const PILLARS: { title: string; body: string }[] = [
   },
   {
     title: 'Easy exchanges',
-    body: 'Free shipping over ₹999, seven-day returns and Cash on Delivery across India. Shopping online should feel low-risk.',
+    body: 'Free delivery on every order, seven-day returns and Cash on Delivery across India. Shopping online should feel low-risk.',
   },
 ];
 

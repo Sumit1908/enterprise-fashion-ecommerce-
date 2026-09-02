@@ -210,21 +210,13 @@ export class PricingService {
 
     const netSubtotal = itemsSubtotal - discountTotal;
     const threshold = settings.freeShippingThreshold;
-    let shippingTotal = 0;
-    if (input.shipping) {
-      const rateFree =
-        input.shipping.freeAboveAmount != null && netSubtotal >= input.shipping.freeAboveAmount;
-      const storeFree = threshold != null && netSubtotal >= threshold;
-      shippingTotal = freeShippingFromCoupon || rateFree || storeFree ? 0 : input.shipping.price;
-      if (input.paymentMethod === 'COD' && input.shipping.codAvailable) {
-        shippingTotal += input.shipping.codFee;
-      }
-    }
-    shippingTotal = round2(shippingTotal);
+    // Delivery is free on every order and Cash on Delivery carries no fee.
+    // `freeShippingFromCoupon` is still consumed above; the value is always 0.
+    void freeShippingFromCoupon;
+    const shippingTotal = 0;
 
     const grandTotal = round2(netSubtotal + shippingTotal);
-    const amountToFreeShipping =
-      threshold != null && netSubtotal < threshold ? round2(threshold - netSubtotal) : 0;
+    const amountToFreeShipping = 0;
 
     return {
       currency: settings.currency,

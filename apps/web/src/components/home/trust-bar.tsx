@@ -1,7 +1,7 @@
 const ITEMS: { title: string; sub: string; icon: React.ReactNode }[] = [
   {
-    title: 'Complimentary Shipping',
-    sub: 'On every order over ₹999',
+    title: 'Free Delivery',
+    sub: 'On every order, no minimum',
     icon: (
       <path d="M3 7h11v8H3zM14 10h4l3 3v2h-7zM7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
     ),

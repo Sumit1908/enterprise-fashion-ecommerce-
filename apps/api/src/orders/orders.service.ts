@@ -76,10 +76,12 @@ export class OrdersService {
       });
     }
 
-    // Shipping + payment method.
+    // Shipping + payment method. There is a single free-delivery option; accept a
+    // stale/absent rate id and fall back to it rather than failing checkout.
     const shippingOptions = await this.pricing.shippingOptions(dto.shippingAddress.pincode);
-    const shipping = shippingOptions.find((s) => s.id === dto.shippingRateId);
-    if (!shipping) throw new BadRequestException('Choose a delivery option');
+    const shipping =
+      shippingOptions.find((s) => s.id === dto.shippingRateId) ?? shippingOptions[0];
+    if (!shipping) throw new BadRequestException('Delivery is not available right now');
     if (dto.paymentMethod === 'COD' && !shipping.codAvailable) {
       throw new BadRequestException('Cash on Delivery is not available for this address / method');
     }

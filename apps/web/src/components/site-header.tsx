@@ -14,7 +14,7 @@ async function getTree(): Promise<CategoryNode[]> {
 }
 
 const ANNOUNCEMENTS = [
-  'Timeless style. Delivered to your door.',
+  'Free delivery on every order',
   'Easy 7-day returns · Cash on Delivery available',
   'New season, new arrivals — for men, women & kids',
 ];

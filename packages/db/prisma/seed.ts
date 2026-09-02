@@ -280,20 +280,19 @@ async function seedCatalogStructure() {
     create: { name: 'India', regions: { countries: ['IN'] }, isActive: true },
     update: {},
   });
-  const existingRate = await prisma.shippingRate.findFirst({ where: { zoneId: zone.id, name: 'Standard' } });
-  if (!existingRate) {
-    await prisma.shippingRate.create({
-      data: {
-        zoneId: zone.id, name: 'Standard', price: 79, freeAboveAmount: 999,
-        minDeliveryDays: 3, maxDeliveryDays: 7, codAvailable: true, codFee: 49,
-      },
-    });
-    await prisma.shippingRate.create({
-      data: {
-        zoneId: zone.id, name: 'Express', price: 199, minDeliveryDays: 1,
-        maxDeliveryDays: 3, codAvailable: false, sortOrder: 1,
-      },
-    });
+  // Single free-delivery option — no Standard/Express choice, no COD fee.
+  await prisma.shippingRate.deleteMany({
+    where: { zoneId: zone.id, name: { in: ['Standard', 'Express'] } },
+  });
+  const freeRate = await prisma.shippingRate.findFirst({ where: { zoneId: zone.id, name: 'Free Delivery' } });
+  const freeRateData = {
+    price: 0, freeAboveAmount: null, minDeliveryDays: 3, maxDeliveryDays: 7,
+    codAvailable: true, codFee: 0, isActive: true, sortOrder: 0,
+  };
+  if (freeRate) {
+    await prisma.shippingRate.update({ where: { id: freeRate.id }, data: freeRateData });
+  } else {
+    await prisma.shippingRate.create({ data: { zoneId: zone.id, name: 'Free Delivery', ...freeRateData } });
   }
   console.log('  Catalog structure: categories, collections, tax classes, warehouse, shipping');
 }
@@ -318,7 +317,7 @@ async function seedSettings() {
     // once RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are set on the API service; until
     // then the storefront silently shows Cash on Delivery only.
     ['payment', 'payment.enabledMethods', ['COD', 'RAZORPAY'], 'Enabled payment methods'],
-    ['shipping', 'shipping.freeShippingThreshold', 999, 'Free shipping above'],
+    ['shipping', 'shipping.freeShippingThreshold', 0, 'Free shipping above (0 = always free)'],
     ['shipping', 'shipping.defaultProvider', 'shiprocket', 'Default courier aggregator'],
     ['tax', 'tax.pricesIncludeTax', true, 'Displayed prices include tax'],
     ['seo', 'seo.defaultTitleTemplate', '%s | Velor House', 'Title template'],

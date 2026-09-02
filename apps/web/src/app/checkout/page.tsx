@@ -228,34 +228,15 @@ export default function CheckoutPage() {
           </Section>
 
           <Section title="Delivery">
-            {summary.shippingOptions.map((opt) => (
-              <label
-                key={opt.id}
-                className={`flex cursor-pointer items-center justify-between rounded-lg border p-4 text-sm ${
-                  shippingRateId === opt.id ? 'border-[var(--color-ink)]' : 'border-[var(--color-sand)]'
-                }`}
-              >
-                <span className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="shipping"
-                    checked={shippingRateId === opt.id}
-                    onChange={() => setShippingRateId(opt.id)}
-                  />
-                  <span>
-                    <span className="font-medium">{opt.name}</span>
-                    {opt.minDeliveryDays && (
-                      <span className="block text-xs text-[var(--color-ink-soft)]">
-                        {opt.minDeliveryDays}–{opt.maxDeliveryDays} business days
-                      </span>
-                    )}
-                  </span>
+            <div className="flex items-center justify-between rounded-lg border border-[var(--color-ink)] p-4 text-sm">
+              <span>
+                <span className="font-medium">Free delivery</span>
+                <span className="block text-xs text-[var(--color-ink-soft)]">
+                  {selectedShipping?.minDeliveryDays ?? 3}–{selectedShipping?.maxDeliveryDays ?? 7} business days
                 </span>
-                <span className="font-medium">
-                  {Number(opt.price) === 0 ? 'Free' : inr(opt.price)}
-                </span>
-              </label>
-            ))}
+              </span>
+              <span className="font-semibold uppercase tracking-[0.08em]">Free</span>
+            </div>
           </Section>
 
           <Section title="Payment">
@@ -279,9 +260,6 @@ export default function CheckoutPage() {
                     <span className="font-medium">{m.label}</span>
                     <span className="block text-xs text-[var(--color-ink-soft)]">
                       {m.description}
-                      {selectedShipping && m.method === 'COD' && Number(selectedShipping.codFee) > 0
-                        ? ` · ${inr(selectedShipping.codFee)} COD fee`
-                        : ''}
                     </span>
                   </span>
                 </label>

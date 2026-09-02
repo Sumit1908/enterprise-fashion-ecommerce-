@@ -186,11 +186,9 @@ export default function CartPage() {
               </div>
             </dl>
 
-            {Number(s.amountToFreeShipping) > 0 && (
-              <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
-                Add {inr(s.amountToFreeShipping)} more for free shipping.
-              </p>
-            )}
+            <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
+              Free delivery on every order.
+            </p>
 
             <button
               onClick={() => router.push('/checkout')}

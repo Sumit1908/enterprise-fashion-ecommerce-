@@ -134,7 +134,7 @@ export function MobileNav({ tree }: { tree: CategoryNode[] }) {
               </div>
 
               <p className="border-t border-[var(--color-sand)] px-5 py-4 text-xs text-[var(--color-ink-soft)]">
-                Complimentary shipping over ₹999 · Easy 7-day returns · COD available
+                Free delivery on every order · Easy 7-day returns · COD available
               </p>
             </nav>
           </div>,

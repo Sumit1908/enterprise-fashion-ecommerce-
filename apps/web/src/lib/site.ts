@@ -39,9 +39,11 @@ export const SITE = {
   },
 
   currency: 'INR',
-  freeShippingThreshold: 999,
-  standardShippingFee: 79,
-  expressShippingFee: 199,
-  codFee: 49,
+  // Delivery is free on every order; Cash on Delivery has no fee.
+  freeShippingThreshold: 0,
+  standardShippingFee: 0,
+  codFee: 0,
+  deliveryMinDays: 3,
+  deliveryMaxDays: 7,
   returnWindowDays: 7,
 } as const;

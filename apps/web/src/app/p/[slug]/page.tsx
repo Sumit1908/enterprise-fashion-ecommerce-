@@ -184,7 +184,7 @@ export default async function ProductPage({ params }: PageProps) {
               </dl>
             )}
             <div className="rounded-lg bg-[var(--color-paper)] p-4 text-xs text-[var(--color-ink-soft)]">
-              Free shipping over ₹999 · Easy 7-day returns · Cash on Delivery available
+              Free delivery on every order · Easy 7-day returns · Cash on Delivery available
             </div>
           </div>
         </div>
