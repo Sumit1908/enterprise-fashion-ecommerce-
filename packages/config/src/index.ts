@@ -70,6 +70,13 @@ export const envSchema = z.object({
   DELHIVERY_API_TOKEN: z.string().optional(),
   BLUEDART_LICENSE_KEY: z.string().optional(),
 
+  // Checkout PIN-code validation (city/state auto-fill + serviceability).
+  // api.postalpincode.in is a keyless India Post wrapper — no secret needed.
+  PINCODE_PROVIDER: z.enum(['indiapost', 'none']).default('indiapost'),
+  PINCODE_API_BASE_URL: z.string().url().default('https://api.postalpincode.in'),
+  PINCODE_LOOKUP_TIMEOUT_MS: z.coerce.number().default(4000),
+  PINCODE_CACHE_TTL_DAYS: z.coerce.number().default(90),
+
   EMAIL_PROVIDER: z.enum(['smtp', 'ses', 'resend']).default('smtp'),
   EMAIL_FROM: z.string().default('Velor House <velorhouse@gmail.com>'),
   SMTP_HOST: z.string().optional(),

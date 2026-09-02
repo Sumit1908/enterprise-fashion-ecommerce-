@@ -95,6 +95,12 @@ services:
         sync: false
       - key: OTP_PEPPER
         generateValue: true
+      # Checkout PIN-code validation (City/State auto-fill + serviceability).
+      # Keyless India Post lookup — no secret; resolved PINs are cached in the DB.
+      - key: PINCODE_PROVIDER
+        value: indiapost
+      - key: PINCODE_LOOKUP_TIMEOUT_MS
+        value: "4000"
 
   # ---------------------------------------------------------- Storefront (Next.js)
   - type: web

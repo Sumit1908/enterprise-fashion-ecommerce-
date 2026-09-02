@@ -12,6 +12,7 @@ import { CartService, type CartContext } from '../cart/cart.service.js';
 import { PricingService } from '../pricing/pricing.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { EmailService } from '../email/email.service.js';
+import { PincodeService } from '../geo/pincode.service.js';
 import { BRAND } from '../common/brand.js';
 import type { PaymentInitResult } from '../payments/payment-provider.js';
 import { money, round2, toNumber } from '../common/money.js';
@@ -41,6 +42,7 @@ export class OrdersService {
     private readonly pricing: PricingService,
     private readonly payments: PaymentsService,
     private readonly email: EmailService,
+    private readonly pincode: PincodeService,
   ) {}
 
   /* ------------------------------------------------------------- placement */
@@ -76,13 +78,29 @@ export class OrdersService {
       });
     }
 
+    // Authoritative address check — real PIN, serviceable, and the submitted
+    // city/state actually belong to it. Throws HTTP 400 with a clear message
+    // otherwise. The client's city/state/district are never trusted past here.
+    const geo = await this.pincode.assertDeliverableAddress({
+      line1: dto.shippingAddress.line1,
+      pincode: dto.shippingAddress.pincode,
+      city: dto.shippingAddress.city,
+      state: dto.shippingAddress.state,
+    });
+    const verifiedShippingAddress: AddressDto = {
+      ...dto.shippingAddress,
+      city: geo.city,
+      state: geo.state,
+      district: geo.district,
+    };
+
     // Shipping + payment method. There is a single free-delivery option; accept a
     // stale/absent rate id and fall back to it rather than failing checkout.
     const shippingOptions = await this.pricing.shippingOptions(dto.shippingAddress.pincode);
     const shipping =
       shippingOptions.find((s) => s.id === dto.shippingRateId) ?? shippingOptions[0];
     if (!shipping) throw new BadRequestException('Delivery is not available right now');
-    if (dto.paymentMethod === 'COD' && !shipping.codAvailable) {
+    if (dto.paymentMethod === 'COD' && (!shipping.codAvailable || !geo.codAvailable)) {
       throw new BadRequestException('Cash on Delivery is not available for this address / method');
     }
 
@@ -137,8 +155,8 @@ export class OrdersService {
           grandTotal: money(totals.grandTotal),
           couponCode: totals.coupon?.code ?? null,
           couponId: totals.coupon ? coupon?.id ?? null : null,
-          shippingAddress: addressJson(dto.shippingAddress),
-          billingAddress: addressJson(dto.billingAddress ?? dto.shippingAddress),
+          shippingAddress: addressJson(verifiedShippingAddress),
+          billingAddress: addressJson(dto.billingAddress ?? verifiedShippingAddress),
           customerNote: dto.customerNote ?? null,
           ipAddress: meta.ip ?? null,
           channel: 'web',
@@ -797,6 +815,7 @@ function addressJson(a: AddressDto): Prisma.InputJsonValue {
     line2: a.line2 ?? null,
     landmark: a.landmark ?? null,
     city: a.city,
+    district: a.district ?? null,
     state: a.state,
     pincode: a.pincode,
     country: a.country ?? 'IN',

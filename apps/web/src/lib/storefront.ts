@@ -131,6 +131,18 @@ export interface PaymentMethodOption {
   codAvailable: boolean;
 }
 
+export interface PincodeLookup {
+  pincode: string;
+  city: string;
+  district: string;
+  state: string;
+  area: string | null;
+  serviceable: boolean;
+  codAvailable: boolean;
+  etaMinDays: number;
+  etaMaxDays: number;
+}
+
 export interface CheckoutSummary {
   cart: Cart;
   guestCheckoutEnabled: boolean;
@@ -139,7 +151,11 @@ export interface CheckoutSummary {
   paymentMethods: PaymentMethodOption[];
   serviceability: {
     pincode: string;
+    status?: 'invalid' | 'unserviceable' | 'serviceable';
     serviceable: boolean;
+    city?: string | null;
+    district?: string | null;
+    state?: string | null;
     etaMinDays?: number | null;
     etaMaxDays?: number | null;
     codAvailable: boolean;
@@ -232,6 +248,8 @@ export const storefront = {
 
   checkoutSummary: (pincode?: string) =>
     request<CheckoutSummary>(`/checkout${pincode ? `?pincode=${encodeURIComponent(pincode)}` : ''}`),
+  lookupPincode: (pincode: string) =>
+    request<PincodeLookup>(`/geo/pincode/${encodeURIComponent(pincode)}`),
   quote: (input: { pincode?: string; shippingRateId?: string; couponCode?: string; paymentMethod?: string }) =>
     request<{ totals: OrderView['totals'] & { currency: string }; coupon: Cart['coupon']; shippingRateId: string | null; amountToFreeShipping: string }>(
       '/checkout/quote',

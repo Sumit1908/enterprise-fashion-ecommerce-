@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
 import { CartService, type CartContext } from '../cart/cart.service.js';
 import { PricingService } from '../pricing/pricing.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
+import { PincodeService } from '../geo/pincode.service.js';
 import { money } from '../common/money.js';
 
 const METHOD_LABELS: Record<string, { label: string; description: string }> = {
@@ -20,10 +20,10 @@ const METHOD_LABELS: Record<string, { label: string; description: string }> = {
 @Injectable()
 export class CheckoutService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly cart: CartService,
     private readonly pricing: PricingService,
     private readonly payments: PaymentsService,
+    private readonly pincode: PincodeService,
   ) {}
 
   async summary(ctx: CartContext, pincode?: string) {
@@ -40,16 +40,42 @@ export class CheckoutService {
       codAvailable: m !== 'COD' || shippingOptions.some((s) => s.codAvailable),
     }));
 
-    let serviceability: { pincode: string; serviceable: boolean; etaMinDays?: number | null; etaMaxDays?: number | null; codAvailable: boolean } | null = null;
+    let serviceability:
+      | {
+          pincode: string;
+          status: 'invalid' | 'unserviceable' | 'serviceable';
+          serviceable: boolean;
+          city?: string | null;
+          district?: string | null;
+          state?: string | null;
+          etaMinDays?: number | null;
+          etaMaxDays?: number | null;
+          codAvailable: boolean;
+        }
+      | null = null;
     if (pincode) {
-      const svc = await this.prisma.serviceablePincode.findUnique({ where: { pincode } });
-      serviceability = {
-        pincode,
-        serviceable: svc ? svc.prepaidAvailable : true,
-        etaMinDays: svc?.etaMinDays,
-        etaMaxDays: svc?.etaMaxDays,
-        codAvailable: svc ? svc.codAvailable : true,
-      };
+      try {
+        const geo = await this.pincode.resolve(pincode);
+        if (!geo) {
+          serviceability = { pincode, status: 'invalid', serviceable: false, codAvailable: false };
+        } else {
+          serviceability = {
+            pincode,
+            status: geo.serviceable ? 'serviceable' : 'unserviceable',
+            serviceable: geo.serviceable,
+            city: geo.city,
+            district: geo.district,
+            state: geo.state,
+            etaMinDays: geo.etaMinDays,
+            etaMaxDays: geo.etaMaxDays,
+            codAvailable: geo.codAvailable,
+          };
+        }
+      } catch {
+        // Upstream lookup unavailable — leave serviceability null so the client
+        // asks the shopper to retry rather than silently assuming it is fine.
+        serviceability = null;
+      }
     }
 
     return {

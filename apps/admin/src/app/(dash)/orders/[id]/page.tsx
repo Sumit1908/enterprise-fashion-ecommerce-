@@ -211,8 +211,12 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
               {order.shippingAddress.line1}
               {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ''}
               <br />
-              {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
-              {order.shippingAddress.pincode}
+              {order.shippingAddress.city}
+              {order.shippingAddress.district &&
+              order.shippingAddress.district !== order.shippingAddress.city
+                ? ` (${order.shippingAddress.district})`
+                : ''}
+              , {order.shippingAddress.state} {order.shippingAddress.pincode}
               <br />
               {order.shippingAddress.phone}
             </address>

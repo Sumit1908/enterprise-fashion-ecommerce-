@@ -1351,14 +1351,21 @@ model ShippingRate {
   sortOrder     Int          @default(0)
 }
 
+// Authoritative PIN-code directory + serviceability list. Rows are created on
+// demand from the India Post lookup (source = "indiapost") and cached here so
+// repeat checkouts never hit the external API; ops can also add/curate rows
+// (source = "manual") and flip prepaidAvailable / codAvailable to block a PIN.
 model ServiceablePincode {
   pincode        String   @id
   city           String?
+  district       String?
   state          String?
   codAvailable   Boolean  @default(true)
   prepaidAvailable Boolean @default(true)
   etaMinDays     Int?
   etaMaxDays     Int?
+  source         String   @default("manual") // "indiapost" | "manual" | "fallback"
+  verifiedAt     DateTime?
   updatedAt      DateTime @updatedAt
 }
 

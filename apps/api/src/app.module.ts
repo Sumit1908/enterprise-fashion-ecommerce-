@@ -12,6 +12,7 @@ import { HealthModule } from './health/health.module.js';
 import { MediaModule } from './media/media.module.js';
 import { SearchModule } from './search/search.module.js';
 import { PricingModule } from './pricing/pricing.module.js';
+import { GeoModule } from './geo/geo.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { CartModule } from './cart/cart.module.js';
 import { OrdersModule } from './orders/orders.module.js';
@@ -39,6 +40,7 @@ const env = loadEnv();
     MediaModule,
     SearchModule,
     PricingModule,
+    GeoModule,
     PaymentsModule,
     CartModule,
     OrdersModule,

@@ -5,8 +5,8 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
-  MinLength,
   ValidateNested,
 } from 'class-validator';
 
@@ -16,9 +16,13 @@ export class AddressDto {
   @IsString() @MaxLength(200) line1!: string;
   @IsOptional() @IsString() @MaxLength(200) line2?: string;
   @IsOptional() @IsString() @MaxLength(120) landmark?: string;
+  // city / state / district are authoritative from the server-side PIN lookup;
+  // whatever the client sends here is re-derived and checked before an order.
   @IsString() @MaxLength(80) city!: string;
   @IsString() @MaxLength(80) state!: string;
-  @IsString() @MinLength(4) @MaxLength(12) pincode!: string;
+  @IsOptional() @IsString() @MaxLength(80) district?: string;
+  @IsString() @Matches(/^[1-9][0-9]{5}$/, { message: 'Enter a valid 6-digit PIN code' })
+  pincode!: string;
   @IsOptional() @IsString() @MaxLength(2) country?: string;
 }
 

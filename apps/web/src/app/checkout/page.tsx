@@ -1,10 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-context';
-import { storefront, inr, ApiError, type CheckoutSummary } from '@/lib/storefront';
+import {
+  storefront,
+  inr,
+  ApiError,
+  type CheckoutSummary,
+  type PincodeLookup,
+} from '@/lib/storefront';
 
 interface Address {
   fullName: string;
@@ -12,8 +18,6 @@ interface Address {
   line1: string;
   line2: string;
   landmark: string;
-  city: string;
-  state: string;
   pincode: string;
 }
 const EMPTY_ADDR: Address = {
@@ -22,10 +26,10 @@ const EMPTY_ADDR: Address = {
   line1: '',
   line2: '',
   landmark: '',
-  city: '',
-  state: '',
   pincode: '',
 };
+
+type PinStatus = 'idle' | 'checking' | 'ok' | 'invalid' | 'unserviceable' | 'error';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -38,6 +42,11 @@ export default function CheckoutPage() {
   const [shippingRateId, setShippingRateId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [note, setNote] = useState('');
+
+  const [pinStatus, setPinStatus] = useState<PinStatus>('idle');
+  const [pinMessage, setPinMessage] = useState<string | null>(null);
+  const [geo, setGeo] = useState<PincodeLookup | null>(null);
+  const pinReqId = useRef(0);
 
   const [totals, setTotals] = useState<CheckoutSummary['cart']['summary'] | null>(null);
   const [placing, setPlacing] = useState(false);
@@ -58,6 +67,55 @@ export default function CheckoutPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** Verify the PIN server-side once it's exactly 6 digits; auto-fill city/state. */
+  const verifyPin = useCallback(async (pin: string) => {
+    const reqId = ++pinReqId.current;
+    setPinStatus('checking');
+    setPinMessage('Checking PIN code…');
+    setGeo(null);
+    try {
+      const res = await storefront.lookupPincode(pin);
+      if (reqId !== pinReqId.current) return;
+      if (!res.serviceable) {
+        setGeo(res);
+        setPinStatus('unserviceable');
+        setPinMessage('Delivery is not available at this PIN code.');
+        return;
+      }
+      setGeo(res);
+      setPinStatus('ok');
+      setPinMessage('PIN code verified');
+    } catch (e) {
+      if (reqId !== pinReqId.current) return;
+      setGeo(null);
+      if (e instanceof ApiError && e.status === 404) {
+        setPinStatus('invalid');
+        setPinMessage('Invalid PIN code. Please check and try again.');
+      } else {
+        setPinStatus('error');
+        setPinMessage('Unable to verify PIN code. Please try again.');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const pin = addr.pincode;
+    if (!/^[1-9][0-9]{5}$/.test(pin)) {
+      pinReqId.current++;
+      setGeo(null);
+      if (pin.length === 6) {
+        setPinStatus('invalid');
+        setPinMessage('Invalid PIN code. Please check and try again.');
+      } else {
+        setPinStatus(pin.length === 0 ? 'idle' : 'checking');
+        setPinMessage(null);
+      }
+      return;
+    }
+    const t = setTimeout(() => void verifyPin(pin), 250);
+    return () => clearTimeout(t);
+  }, [addr.pincode, verifyPin]);
 
   // Re-quote when the shipping method / payment method / pincode changes.
   const reQuote = useCallback(async () => {
@@ -116,12 +174,18 @@ export default function CheckoutPage() {
       ['fullName', 'full name'],
       ['phone', 'phone'],
       ['line1', 'address'],
-      ['city', 'city'],
-      ['state', 'state'],
-      ['pincode', 'PIN code'],
     ] as const) {
       if (!addr[k].trim()) return setError(`Please enter your ${label}.`);
     }
+    if (addr.line1.trim().length < 10) {
+      return setError('Please enter your full street address (house / building number, street and area).');
+    }
+    if (!/^[1-9][0-9]{5}$/.test(addr.pincode)) return setError('Please enter a valid 6-digit PIN code.');
+    if (pinStatus === 'checking') return setError('Please wait — we are still verifying your PIN code.');
+    if (pinStatus === 'invalid') return setError('Please enter a valid PIN code.');
+    if (pinStatus === 'unserviceable') return setError('Sorry, delivery is currently unavailable at this PIN code.');
+    if (pinStatus === 'error') return setError('We could not verify your PIN code. Please try again.');
+    if (pinStatus !== 'ok' || !geo) return setError('Please enter a valid PIN code.');
     if (!shippingRateId) return setError('Choose a delivery option.');
     if (!paymentMethod) return setError('Choose a payment method.');
 
@@ -136,8 +200,9 @@ export default function CheckoutPage() {
           line1: addr.line1,
           line2: addr.line2 || undefined,
           landmark: addr.landmark || undefined,
-          city: addr.city,
-          state: addr.state,
+          city: geo.city,
+          state: geo.state,
+          district: geo.district,
           pincode: addr.pincode,
         },
         shippingRateId,
@@ -179,6 +244,13 @@ export default function CheckoutPage() {
     }
   }
 
+  const pinToneClass =
+    pinStatus === 'ok'
+      ? 'text-[var(--color-ink-soft)]'
+      : pinStatus === 'checking'
+        ? 'text-[var(--color-ink-soft)]'
+        : 'text-[var(--color-sale)]';
+
   return (
     <div className="container-wide py-10">
       <h1 className="font-display text-3xl font-semibold">Checkout</h1>
@@ -202,27 +274,53 @@ export default function CheckoutPage() {
               <Input label="Full name" value={addr.fullName} onChange={(v) => set('fullName', v)} />
               <Input label="Phone" value={addr.phone} onChange={(v) => set('phone', v)} />
               <div className="sm:col-span-2">
-                <Input label="Address" value={addr.line1} onChange={(v) => set('line1', v)} />
+                <Input
+                  label="Address (house / building, street, area)"
+                  value={addr.line1}
+                  onChange={(v) => set('line1', v)}
+                />
               </div>
               <div className="sm:col-span-2">
                 <Input label="Apartment, suite (optional)" value={addr.line2} onChange={(v) => set('line2', v)} />
               </div>
-              <Input label="City" value={addr.city} onChange={(v) => set('city', v)} />
-              <Input label="State" value={addr.state} onChange={(v) => set('state', v)} />
-              <Input
-                label="PIN code"
-                value={addr.pincode}
-                onChange={(v) => set('pincode', v)}
-                onBlur={() => addr.pincode.length >= 5 && load(addr.pincode)}
-              />
+              <div className="sm:col-span-2">
+                <Input
+                  label="PIN code"
+                  value={addr.pincode}
+                  inputMode="numeric"
+                  maxLength={6}
+                  onChange={(v) => set('pincode', v.replace(/\D/g, '').slice(0, 6))}
+                />
+                {pinMessage && (
+                  <p className={`mt-1 flex items-center gap-1.5 text-xs ${pinToneClass}`}>
+                    {pinStatus === 'ok' && <span aria-hidden>✓</span>}
+                    {pinStatus === 'checking' && (
+                      <span
+                        aria-hidden
+                        className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
+                      />
+                    )}
+                    <span>{pinMessage}</span>
+                    {pinStatus === 'error' && (
+                      <button
+                        type="button"
+                        onClick={() => void verifyPin(addr.pincode)}
+                        className="underline"
+                      >
+                        Retry
+                      </button>
+                    )}
+                  </p>
+                )}
+              </div>
+
+              <LockedField label="City / District" value={geo?.city ?? ''} />
+              <LockedField label="State" value={geo?.state ?? ''} />
             </div>
-            {summary.serviceability && (
+
+            {pinStatus === 'ok' && geo && (
               <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                {summary.serviceability.serviceable
-                  ? summary.serviceability.etaMinDays
-                    ? `Delivers in ${summary.serviceability.etaMinDays}–${summary.serviceability.etaMaxDays} days`
-                    : 'Delivery available to this PIN code'
-                  : 'We may not deliver to this PIN code yet'}
+                Delivery available · {geo.etaMinDays}–{geo.etaMaxDays} business days · FREE
               </p>
             )}
           </Section>
@@ -232,7 +330,8 @@ export default function CheckoutPage() {
               <span>
                 <span className="font-medium">Free delivery</span>
                 <span className="block text-xs text-[var(--color-ink-soft)]">
-                  {selectedShipping?.minDeliveryDays ?? 3}–{selectedShipping?.maxDeliveryDays ?? 7} business days
+                  {geo?.etaMinDays ?? selectedShipping?.minDeliveryDays ?? 3}–
+                  {geo?.etaMaxDays ?? selectedShipping?.maxDeliveryDays ?? 7} business days
                 </span>
               </span>
               <span className="font-semibold uppercase tracking-[0.08em]">Free</span>
@@ -341,22 +440,47 @@ function Input({
   onChange,
   onBlur,
   type = 'text',
+  inputMode,
+  maxLength,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   onBlur?: () => void;
   type?: string;
+  inputMode?: 'numeric' | 'text' | 'tel' | 'email';
+  maxLength?: number;
 }) {
   return (
     <label className="block text-sm">
       <span className="mb-1 block text-xs text-[var(--color-ink-soft)]">{label}</span>
       <input
         type={type}
+        inputMode={inputMode}
+        maxLength={maxLength}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
         className="w-full rounded-md border border-[var(--color-sand)] px-3 py-2 text-sm focus:border-[var(--color-ink)] focus:outline-none"
+      />
+    </label>
+  );
+}
+
+/** City / State — filled from the PIN lookup, not editable by the shopper. */
+function LockedField({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="block text-sm">
+      <span className="mb-1 block text-xs text-[var(--color-ink-soft)]">
+        {label} <span className="text-[var(--color-ink-soft)]">· auto</span>
+      </span>
+      <input
+        value={value}
+        readOnly
+        tabIndex={-1}
+        aria-readonly="true"
+        placeholder="From PIN code"
+        className="w-full cursor-not-allowed rounded-md border border-dashed border-[var(--color-sand)] bg-[var(--color-bone)] px-3 py-2 text-sm text-[var(--color-ink-soft)] focus:outline-none"
       />
     </label>
   );
