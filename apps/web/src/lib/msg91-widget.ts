@@ -26,7 +26,7 @@ const SCRIPT_SRC = 'https://verify.msg91.com/otp-provider.js';
 const CAPTCHA_ID = 'msg91-captcha-slot';
 // Sending can involve the shopper solving a captcha challenge, so be generous;
 // verification is a quick round-trip.
-const SEND_TIMEOUT_MS = 45000;
+const SEND_TIMEOUT_MS = 25000;
 const VERIFY_TIMEOUT_MS = 20000;
 
 type Cb = (data: unknown) => void;
