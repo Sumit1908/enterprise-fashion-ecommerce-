@@ -23,10 +23,12 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   ready: boolean;
-  /** Step 1 — send a one-time code to the mobile number. */
+  /** Step 1 — send a one-time code to the mobile number (SMS-OTP fallback path). */
   requestOtp: (phone: string) => Promise<{ resendInSec: number; devCode?: string; delivered: boolean }>;
   /** Step 2 — verify the code; signs the customer in (creating the account if new). */
   verifyOtp: (phone: string, otp: string, firstName?: string) => Promise<{ isNew: boolean }>;
+  /** MSG91 widget path — hand the widget's access token to the server for sign-in. */
+  verifyWidgetOtp: (phone: string, accessToken: string, firstName?: string) => Promise<{ isNew: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -89,6 +91,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [finishAuth],
   );
 
+  const verifyWidgetOtp = useCallback(
+    async (phone: string, widgetToken: string, firstName?: string) => {
+      const { accessToken, isNew } = await storefront.verifyOtpWidget({
+        accessToken: widgetToken,
+        phone,
+        firstName,
+      });
+      await finishAuth(accessToken);
+      return { isNew };
+    },
+    [finishAuth],
+  );
+
   const logout = useCallback(async () => {
     await storefront.logout();
     setAuthToken(null);
@@ -97,8 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthState>(
-    () => ({ user, ready, requestOtp, verifyOtp, logout }),
-    [user, ready, requestOtp, verifyOtp, logout],
+    () => ({ user, ready, requestOtp, verifyOtp, verifyWidgetOtp, logout }),
+    [user, ready, requestOtp, verifyOtp, verifyWidgetOtp, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

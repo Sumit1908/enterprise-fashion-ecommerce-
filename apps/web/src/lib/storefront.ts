@@ -287,6 +287,20 @@ export const storefront = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  /** Which OTP transport is live + the browser-safe MSG91 widget parameters. */
+  otpConfig: () =>
+    request<{
+      widget: boolean;
+      widgetId: string | null;
+      tokenAuth: string | null;
+      sms: boolean;
+    }>('/auth/otp/config'),
+  /** MSG91 Secure OTP widget — the browser verified the code; the server checks the token. */
+  verifyOtpWidget: (body: { accessToken: string; phone: string; firstName?: string }) =>
+    request<{ accessToken: string; isNew: boolean }>('/auth/otp/widget/verify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   me: () =>
     request<{
       id: string;

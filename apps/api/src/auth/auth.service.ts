@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@slay/db';
 import { createHash, randomBytes } from 'node:crypto';
 import { loadEnv } from '@slay/config';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -69,30 +70,48 @@ export class AuthService {
     opts: { firstName?: string } = {},
   ) {
     const now = new Date();
-    const found = await this.prisma.user.findUnique({ where: { phone: phoneE164 } });
-    if (found?.status === 'BANNED') throw new UnauthorizedException('Account suspended');
-    const isNew = !found;
+    const firstName = opts.firstName?.trim() || null;
+    const existing = await this.prisma.user.findUnique({ where: { phone: phoneE164 } });
+    if (existing?.status === 'BANNED') throw new UnauthorizedException('Account suspended');
 
-    const user = found
-      ? await this.prisma.user.update({
-          where: { id: found.id },
-          data: {
-            phoneVerifiedAt: found.phoneVerifiedAt ?? now,
-            lastLoginAt: now,
-            ...(opts.firstName && !found.firstName ? { firstName: opts.firstName.trim() } : {}),
-          },
-        })
-      : await this.prisma.user.create({
+    let user = existing;
+    let isNew = false;
+    if (!user) {
+      try {
+        user = await this.prisma.user.create({
           data: {
             phone: phoneE164,
             phoneVerifiedAt: now,
-            firstName: opts.firstName?.trim() || null,
+            firstName,
             kind: 'CUSTOMER',
             status: 'ACTIVE',
             lastLoginAt: now,
             loyaltyAccount: env.FEATURE_LOYALTY ? { create: {} } : undefined,
           },
         });
+        isNew = true;
+      } catch (err) {
+        // Two verify calls for a brand-new number can race on the unique phone.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          user = await this.prisma.user.findUnique({ where: { phone: phoneE164 } });
+        } else {
+          throw err;
+        }
+      }
+    }
+    if (!user) throw new UnauthorizedException('Could not resolve your account');
+    if (user.status === 'BANNED') throw new UnauthorizedException('Account suspended');
+
+    if (!isNew) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          phoneVerifiedAt: user.phoneVerifiedAt ?? now,
+          lastLoginAt: now,
+          ...(firstName && !user.firstName ? { firstName } : {}),
+        },
+      });
+    }
 
     return { tokens: await this.issueTokens(user.id, ctx), isNew };
   }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -9,11 +10,20 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { loadEnv } from '@slay/config';
 import { AuthService } from './auth.service.js';
 import { OtpService } from './otp.service.js';
-import { LoginDto, RefreshDto, RegisterDto, RequestOtpDto, VerifyOtpDto } from './dto.js';
+import { Msg91WidgetService } from './msg91-widget.service.js';
+import {
+  LoginDto,
+  RefreshDto,
+  RegisterDto,
+  RequestOtpDto,
+  VerifyOtpDto,
+  VerifyWidgetOtpDto,
+} from './dto.js';
 import { CurrentUser, Public, type AuthUser } from '../common/decorators.js';
 import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 
@@ -38,9 +48,18 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly otp: OtpService,
+    private readonly msg91Widget: Msg91WidgetService,
   ) {}
 
   /* ----------------------------- mobile OTP (customers) ---------------------- */
+
+  /** Tells the storefront which OTP transport is live (+ the browser-safe widget
+   *  params), without exposing the authkey. */
+  @Public()
+  @Get('otp/config')
+  otpConfig() {
+    return { ...this.msg91Widget.publicConfig(), sms: true };
+  }
 
   @Public()
   @Post('otp/request')
@@ -60,6 +79,35 @@ export class AuthController {
       userAgent: req.headers['user-agent'],
       ip: req.ip,
     }, { firstName: dto.firstName });
+    setAuthCookies(res, tokens);
+    return { ...tokens, isNew };
+  }
+
+  /**
+   * MSG91 Secure OTP widget path — the browser has already verified the code.
+   * We validate the widget's access token with MSG91, then sign the customer in
+   * (creating the account on first use) through the same session machinery.
+   */
+  @Public()
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @Post('otp/widget/verify')
+  async verifyWidgetOtp(
+    @Body() dto: VerifyWidgetOtpDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const claimed = this.otp.normalisePhone(dto.phone);
+    const verified = await this.msg91Widget.verifyAccessToken(dto.accessToken);
+    if (verified.phone && verified.phone !== claimed) {
+      throw new BadRequestException(
+        'The verified number does not match. Please start again.',
+      );
+    }
+    const { tokens, isNew } = await this.auth.authByVerifiedPhone(
+      verified.phone ?? claimed,
+      { userAgent: req.headers['user-agent'], ip: req.ip },
+      { firstName: dto.firstName },
+    );
     setAuthCookies(res, tokens);
     return { ...tokens, isNew };
   }

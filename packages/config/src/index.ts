@@ -86,9 +86,15 @@ export const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
 
   SMS_PROVIDER: z.enum(['msg91', 'twilio']).default('msg91'),
-  MSG91_AUTH_KEY: z.string().optional(),
+  MSG91_AUTH_KEY: z.string().optional(), // secret — also verifies MSG91 OTP-widget tokens
   MSG91_SENDER_ID: z.string().optional(), // 6-char DLT sender, e.g. VELORH
   MSG91_OTP_TEMPLATE_ID: z.string().optional(), // MSG91 "OTP" flow template id
+  // MSG91 Secure OTP widget. The widget id + token auth are PUBLIC (they ship to
+  // the browser); setting them here lets the storefront pick them up at runtime
+  // via GET /auth/otp/config — no web rebuild needed. The authkey above (secret)
+  // validates the access token the widget returns.
+  MSG91_WIDGET_ID: z.string().optional(),
+  MSG91_WIDGET_TOKEN_AUTH: z.string().optional(),
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM: z.string().optional(), // a Twilio phone number OR Messaging Service SID (MG…)

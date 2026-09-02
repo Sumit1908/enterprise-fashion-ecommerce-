@@ -81,3 +81,26 @@ export class VerifyOtpDto {
   @MaxLength(60)
   firstName?: string;
 }
+
+/**
+ * MSG91 Secure OTP widget — the browser has already sent + verified the code and
+ * returns an access token. The server validates it with MSG91 and issues its own
+ * session, so this replaces the phone/otp pair when the widget is in use.
+ */
+export class VerifyWidgetOtpDto {
+  @ApiProperty({ description: 'access-token returned by the MSG91 OTP widget' })
+  @IsString()
+  @MaxLength(8192)
+  accessToken!: string;
+
+  @ApiProperty({ example: '+919000000000', description: 'the number the shopper entered' })
+  @IsString()
+  @MaxLength(20)
+  phone!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  firstName?: string;
+}

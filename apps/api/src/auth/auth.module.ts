@@ -4,6 +4,7 @@ import { loadEnv } from '@slay/config';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { OtpService } from './otp.service.js';
+import { Msg91WidgetService } from './msg91-widget.service.js';
 import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/permissions.guard.js';
 
@@ -12,7 +13,7 @@ const env = loadEnv();
 @Module({
   imports: [JwtModule.register({ secret: env.JWT_ACCESS_SECRET })],
   controllers: [AuthController],
-  providers: [AuthService, OtpService, JwtAuthGuard, PermissionsGuard],
+  providers: [AuthService, OtpService, Msg91WidgetService, JwtAuthGuard, PermissionsGuard],
   exports: [AuthService, JwtAuthGuard, PermissionsGuard, JwtModule],
 })
 export class AuthModule {}

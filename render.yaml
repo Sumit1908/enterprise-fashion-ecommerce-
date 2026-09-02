@@ -74,14 +74,21 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
-      # Customer mobile-number + OTP login. Pick ONE SMS provider and fill its
-      # keys in the Render dashboard. Without them the API cannot text codes and
-      # customers can't sign in on the live site.
+      # Customer OTP login. Preferred: the MSG91 "Secure OTP" widget — set
+      # MSG91_AUTH_KEY (secret) + MSG91_WIDGET_ID + MSG91_WIDGET_TOKEN_AUTH (both
+      # public, from MSG91 -> OTP -> your widget -> Configuration). The storefront
+      # reads the widget params from GET /auth/otp/config, so nothing to set on
+      # the web service and no rebuild needed.
+      # Fallback (no widget configured): the API texts its own code — needs
       #   MSG91:  AUTH_KEY + SENDER_ID (+ optional OTP_TEMPLATE_ID) -> msg91.com
       #   Twilio: ACCOUNT_SID + AUTH_TOKEN + FROM (a number or MG… Messaging SID)
       - key: SMS_PROVIDER
         value: msg91
       - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_WIDGET_ID
+        sync: false
+      - key: MSG91_WIDGET_TOKEN_AUTH
         sync: false
       - key: MSG91_SENDER_ID
         sync: false

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/storefront';
+import { useMsg91Otp } from '@/lib/msg91-widget';
 
 export default function AccountPage() {
   return (
@@ -29,7 +30,9 @@ function prettyPhone(tenDigits: string): string {
 }
 
 function AccountInner() {
-  const { user, ready, requestOtp, verifyOtp, logout } = useAuth();
+  const { user, ready, requestOtp, verifyOtp, verifyWidgetOtp, logout } = useAuth();
+  const widget = useMsg91Otp();
+  const useWidget = widget.enabled && !widget.initError;
   const router = useRouter();
   const nextParam = useSearchParams().get('next');
 
@@ -43,6 +46,7 @@ function AccountInner() {
   const [resendIn, setResendIn] = useState(0);
 
   const boxRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -56,28 +60,43 @@ function AccountInner() {
       setNotice(null);
       setBusy(true);
       try {
-        const res = await requestOtp(`+91${mobile}`);
-        setResendIn(res.resendInSec || 30);
-        setStep('otp');
-        if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
-        setNotice(
-          res.devCode
-            ? `Development mode — your code is ${res.devCode}`
-            : isResend
-              ? 'A new OTP is on its way.'
-              : null,
-        );
+        if (useWidget) {
+          if (isResend) await widget.retryOtp();
+          else await widget.sendOtp(mobile);
+          setResendIn(30);
+          setStep('otp');
+          if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
+          setNotice(isResend ? 'A new OTP is on its way.' : null);
+        } else {
+          const res = await requestOtp(`+91${mobile}`);
+          setResendIn(res.resendInSec || 30);
+          setStep('otp');
+          if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
+          setNotice(
+            res.devCode
+              ? `Development mode — your code is ${res.devCode}`
+              : isResend
+                ? 'A new OTP is on its way.'
+                : null,
+          );
+        }
         setTimeout(() => boxRefs.current[0]?.focus(), 50);
       } catch (err) {
         setError(
-          err instanceof ApiError ? err.message : 'Could not send the OTP. Please try again.',
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Could not send the OTP. Please try again.',
         );
       } finally {
         setBusy(false);
       }
     },
-    [mobile, requestOtp],
+    [mobile, requestOtp, useWidget, widget],
   );
+
+  const preparing = !widget.resolved || (useWidget && !widget.ready);
 
   async function submitPhone(e: React.FormEvent) {
     e.preventDefault();
@@ -90,22 +109,35 @@ function AccountInner() {
 
   const submitOtp = useCallback(
     async (code: string) => {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
       setError(null);
       setBusy(true);
       try {
-        await verifyOtp(`+91${mobile}`, code, firstName.trim() || undefined);
+        const name = firstName.trim() || undefined;
+        if (useWidget) {
+          const token = await widget.verifyOtp(code);
+          await verifyWidgetOtp(`+91${mobile}`, token, name);
+        } else {
+          await verifyOtp(`+91${mobile}`, code, name);
+        }
         router.push(nextParam || '/account');
       } catch (err) {
         setDigits(Array(OTP_LENGTH).fill(''));
         setTimeout(() => boxRefs.current[0]?.focus(), 50);
         setError(
-          err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Something went wrong. Please try again.',
         );
       } finally {
         setBusy(false);
+        submittingRef.current = false;
       }
     },
-    [mobile, firstName, verifyOtp, router, nextParam],
+    [mobile, firstName, useWidget, widget, verifyOtp, verifyWidgetOtp, router, nextParam],
   );
 
   function setDigit(index: number, value: string) {
@@ -222,8 +254,12 @@ function AccountInner() {
 
           {error && <p className="text-sm text-[var(--color-sale)]">{error}</p>}
 
-          <button type="submit" disabled={busy} className="btn btn-primary w-full disabled:opacity-50">
-            {busy ? 'Sending…' : 'Send OTP'}
+          <button
+            type="submit"
+            disabled={busy || preparing}
+            className="btn btn-primary w-full disabled:opacity-50"
+          >
+            {busy ? 'Sending…' : preparing ? 'Preparing…' : 'Send OTP'}
           </button>
         </form>
 
