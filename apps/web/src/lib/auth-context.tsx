@@ -14,6 +14,7 @@ import { readLocalWishlist, clearLocalWishlist } from './wishlist-store';
 export interface AuthUser {
   id: string;
   email: string | null;
+  phone: string | null;
   firstName: string | null;
   lastName: string | null;
   loyaltyPoints: number;
@@ -22,8 +23,10 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   ready: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName?: string) => Promise<void>;
+  /** Step 1 — send a one-time code to the mobile number. */
+  requestOtp: (phone: string) => Promise<{ resendInSec: number; devCode?: string; delivered: boolean }>;
+  /** Step 2 — verify the code; signs the customer in (creating the account if new). */
+  verifyOtp: (phone: string, otp: string, firstName?: string) => Promise<{ isNew: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -72,18 +75,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent('sj:auth'));
   }, []);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const { accessToken } = await storefront.login({ email, password });
-      await finishAuth(accessToken);
-    },
-    [finishAuth],
-  );
+  const requestOtp = useCallback(async (phone: string) => {
+    const res = await storefront.requestOtp({ phone });
+    return { resendInSec: res.resendInSec, devCode: res.devCode, delivered: res.delivered };
+  }, []);
 
-  const register = useCallback(
-    async (email: string, password: string, firstName?: string) => {
-      const { accessToken } = await storefront.register({ email, password, firstName });
+  const verifyOtp = useCallback(
+    async (phone: string, otp: string, firstName?: string) => {
+      const { accessToken, isNew } = await storefront.verifyOtp({ phone, otp, firstName });
       await finishAuth(accessToken);
+      return { isNew };
     },
     [finishAuth],
   );
@@ -96,8 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthState>(
-    () => ({ user, ready, login, register, logout }),
-    [user, ready, login, register, logout],
+    () => ({ user, ready, requestOtp, verifyOtp, logout }),
+    [user, ready, requestOtp, verifyOtp, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

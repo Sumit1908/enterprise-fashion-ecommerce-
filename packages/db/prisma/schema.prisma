@@ -1929,3 +1929,24 @@ model Redirect {
   hitCount   Int      @default(0)
   createdAt  DateTime @default(now())
 }
+
+// One-time passcodes for mobile-number customer authentication. The plaintext
+// code is never stored — only a salted SHA-256 hash. A challenge is single-use
+// (consumedAt), time-limited (expiresAt) and attempt-limited (attempts).
+model OtpChallenge {
+  id          String    @id @default(cuid())
+  phone       String // E.164, e.g. +919000000000
+  codeHash    String
+  purpose     String    @default("auth")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  resendCount Int       @default(0)
+  lastSentAt  DateTime  @default(now())
+  consumedAt  DateTime?
+  expiresAt   DateTime
+  ip          String?
+  createdAt   DateTime  @default(now())
+
+  @@index([phone, createdAt])
+  @@index([expiresAt])
+}

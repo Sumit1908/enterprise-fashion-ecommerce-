@@ -12,7 +12,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { loadEnv } from '@slay/config';
 import { AuthService } from './auth.service.js';
-import { LoginDto, RefreshDto, RegisterDto } from './dto.js';
+import { OtpService } from './otp.service.js';
+import { LoginDto, RefreshDto, RegisterDto, RequestOtpDto, VerifyOtpDto } from './dto.js';
 import { CurrentUser, Public, type AuthUser } from '../common/decorators.js';
 import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 
@@ -34,7 +35,34 @@ function setAuthCookies(
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly otp: OtpService,
+  ) {}
+
+  /* ----------------------------- mobile OTP (customers) ---------------------- */
+
+  @Public()
+  @Post('otp/request')
+  async requestOtp(@Body() dto: RequestOtpDto, @Req() req: Request) {
+    return this.otp.request(dto.phone, req.ip);
+  }
+
+  @Public()
+  @Post('otp/verify')
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { phone } = await this.otp.verify(dto.phone, dto.otp);
+    const { tokens, isNew } = await this.auth.authByVerifiedPhone(phone, {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    }, { firstName: dto.firstName });
+    setAuthCookies(res, tokens);
+    return { ...tokens, isNew };
+  }
 
   @Public()
   @Post('register')

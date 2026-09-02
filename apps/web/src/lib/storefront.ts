@@ -256,13 +256,16 @@ export const storefront = {
       body: JSON.stringify(body),
     }),
 
-  register: (body: { email: string; password: string; firstName?: string }) =>
-    request<{ accessToken: string }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-  login: (body: { email: string; password: string }) =>
-    request<{ accessToken: string }>('/auth/login', {
+  requestOtp: (body: { phone: string }) =>
+    request<{
+      phone: string;
+      expiresInSec: number;
+      resendInSec: number;
+      delivered: boolean;
+      devCode?: string;
+    }>('/auth/otp/request', { method: 'POST', body: JSON.stringify(body) }),
+  verifyOtp: (body: { phone: string; otp: string; firstName?: string }) =>
+    request<{ accessToken: string; isNew: boolean }>('/auth/otp/verify', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -270,6 +273,7 @@ export const storefront = {
     request<{
       id: string;
       email: string | null;
+      phone: string | null;
       firstName: string | null;
       lastName: string | null;
       loyaltyPoints: number;

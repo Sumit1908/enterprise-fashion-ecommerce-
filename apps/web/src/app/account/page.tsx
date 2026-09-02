@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -14,35 +14,129 @@ export default function AccountPage() {
   );
 }
 
+const OTP_LENGTH = 6;
+
+/** Keep only digits and cap at 10 (Indian mobile numbers). */
+function cleanMobile(raw: string): string {
+  return raw.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10);
+}
+
+/** +91 98765 43210 */
+function prettyPhone(tenDigits: string): string {
+  const d = tenDigits.replace(/\D/g, '').slice(-10);
+  if (d.length !== 10) return `+91 ${tenDigits}`;
+  return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
+}
+
 function AccountInner() {
-  const { user, ready, login, register, logout } = useAuth();
+  const { user, ready, requestOtp, verifyOtp, logout } = useAuth();
   const router = useRouter();
   const nextParam = useSearchParams().get('next');
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [mobile, setMobile] = useState('');
   const [firstName, setFirstName] = useState('');
+  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
 
-  async function submit(e: React.FormEvent) {
+  const boxRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(() => setResendIn((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendIn]);
+
+  const sendOtp = useCallback(
+    async (isResend: boolean) => {
+      setError(null);
+      setNotice(null);
+      setBusy(true);
+      try {
+        const res = await requestOtp(`+91${mobile}`);
+        setResendIn(res.resendInSec || 30);
+        setStep('otp');
+        if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
+        setNotice(
+          res.devCode
+            ? `Development mode — your code is ${res.devCode}`
+            : isResend
+              ? 'A new OTP is on its way.'
+              : null,
+        );
+        setTimeout(() => boxRefs.current[0]?.focus(), 50);
+      } catch (err) {
+        setError(
+          err instanceof ApiError ? err.message : 'Could not send the OTP. Please try again.',
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [mobile, requestOtp],
+  );
+
+  async function submitPhone(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      if (mode === 'login') await login(email, password);
-      else await register(email, password, firstName || undefined);
-      router.push(nextParam || '/account');
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Something went wrong. Please try again.',
-      );
-    } finally {
-      setBusy(false);
+    if (mobile.length !== 10 || !/^[6-9]/.test(mobile)) {
+      setError('Enter a valid 10-digit mobile number.');
+      return;
     }
+    await sendOtp(false);
+  }
+
+  const submitOtp = useCallback(
+    async (code: string) => {
+      setError(null);
+      setBusy(true);
+      try {
+        await verifyOtp(`+91${mobile}`, code, firstName.trim() || undefined);
+        router.push(nextParam || '/account');
+      } catch (err) {
+        setDigits(Array(OTP_LENGTH).fill(''));
+        setTimeout(() => boxRefs.current[0]?.focus(), 50);
+        setError(
+          err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [mobile, firstName, verifyOtp, router, nextParam],
+  );
+
+  function setDigit(index: number, value: string) {
+    const chars = value.replace(/\D/g, '');
+    if (!chars) {
+      setDigits((prev) => prev.map((d, i) => (i === index ? '' : d)));
+      return;
+    }
+    setDigits((prev) => {
+      const next = [...prev];
+      // support paste of the full code into any box
+      const incoming = chars.slice(0, OTP_LENGTH - index).split('');
+      incoming.forEach((c, i) => {
+        next[index + i] = c;
+      });
+      const filledTo = Math.min(index + incoming.length, OTP_LENGTH - 1);
+      setTimeout(() => boxRefs.current[filledTo]?.focus(), 0);
+      const joined = next.join('');
+      if (joined.length === OTP_LENGTH && !next.includes('')) {
+        setTimeout(() => void submitOtp(joined), 0);
+      }
+      return next;
+    });
+  }
+
+  function onOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !digits[index] && index > 0) {
+      boxRefs.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowLeft' && index > 0) boxRefs.current[index - 1]?.focus();
+    if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) boxRefs.current[index + 1]?.focus();
   }
 
   if (!ready) {
@@ -58,7 +152,9 @@ function AccountInner() {
         <h1 className="mt-3 font-display text-3xl sm:text-4xl">
           {user.firstName ? `Hello, ${user.firstName}` : 'Your account'}
         </h1>
-        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">{user.email}</p>
+        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+          {user.email ?? (user.phone ? prettyPhone(user.phone) : null)}
+        </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <Link href="/account/orders" className="border border-[var(--color-sand)] bg-[var(--color-paper)] p-5 text-sm hover:border-[var(--color-ink)]">
@@ -87,73 +183,129 @@ function AccountInner() {
     );
   }
 
-  return (
-    <div className="container-wide max-w-md py-14">
-      <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Join Velor House'}</p>
-      <h1 className="mt-3 font-display text-3xl sm:text-4xl">
-        {mode === 'login' ? 'Sign in' : 'Create account'}
-      </h1>
+  if (step === 'phone') {
+    return (
+      <div className="container-wide max-w-md py-14">
+        <p className="eyebrow">Welcome to Velor House</p>
+        <h1 className="mt-3 font-display text-3xl sm:text-4xl">Enter your mobile number</h1>
+        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+          We&rsquo;ll send you a 6-digit code to sign in. No password needed.
+        </p>
 
-      <form onSubmit={submit} className="mt-8 space-y-4">
-        {mode === 'register' && (
+        <form onSubmit={submitPhone} className="mt-8 space-y-4">
           <label className="block">
-            <span className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--color-ink-soft)]">First name</span>
+            <span className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--color-ink-soft)]">First name (optional)</span>
             <input
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
+              autoComplete="given-name"
               className="mt-1.5 w-full border border-[var(--color-sand)] bg-[var(--color-paper)] px-3.5 py-2.5 text-sm focus:border-[var(--color-ink)] focus:outline-none"
             />
           </label>
-        )}
-        <label className="block">
-          <span className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--color-ink-soft)]">Email</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1.5 w-full border border-[var(--color-sand)] bg-[var(--color-paper)] px-3.5 py-2.5 text-sm focus:border-[var(--color-ink)] focus:outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--color-ink-soft)]">Password</span>
-          <input
-            type="password"
-            required
-            minLength={mode === 'register' ? 8 : undefined}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1.5 w-full border border-[var(--color-sand)] bg-[var(--color-paper)] px-3.5 py-2.5 text-sm focus:border-[var(--color-ink)] focus:outline-none"
-          />
-          {mode === 'register' && (
-            <span className="mt-1 block text-[0.7rem] text-[var(--color-ink-mute)]">At least 8 characters.</span>
-          )}
-        </label>
 
+          <label className="block">
+            <span className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--color-ink-soft)]">Mobile number</span>
+            <div className="mt-1.5 flex items-stretch border border-[var(--color-sand)] bg-[var(--color-paper)] focus-within:border-[var(--color-ink)]">
+              <span className="flex items-center border-r border-[var(--color-sand)] px-3.5 text-sm text-[var(--color-ink-soft)]">+91</span>
+              <input
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                autoFocus
+                placeholder="98765 43210"
+                value={mobile.replace(/(\d{5})(\d+)/, '$1 $2')}
+                onChange={(e) => setMobile(cleanMobile(e.target.value))}
+                className="w-full bg-transparent px-3.5 py-2.5 text-sm tracking-[0.08em] focus:outline-none"
+              />
+            </div>
+          </label>
+
+          {error && <p className="text-sm text-[var(--color-sale)]">{error}</p>}
+
+          <button type="submit" disabled={busy} className="btn btn-primary w-full disabled:opacity-50">
+            {busy ? 'Sending…' : 'Send OTP'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-xs text-[var(--color-ink-mute)]">
+          Prefer not to sign in? You can still{' '}
+          <Link href="/account/orders" className="link-underline">track an order</Link> with your
+          order number and email.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container-wide max-w-md py-14">
+      <p className="eyebrow">Verify your mobile number</p>
+      <h1 className="mt-3 font-display text-3xl sm:text-4xl">Enter the OTP</h1>
+      <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+        We&rsquo;ve sent a 6-digit OTP to{' '}
+        <span className="font-medium text-[var(--color-ink)]">{prettyPhone(mobile)}</span>.{' '}
+        <button
+          type="button"
+          onClick={() => {
+            setStep('phone');
+            setError(null);
+            setNotice(null);
+          }}
+          className="link-underline font-semibold text-[var(--color-ink)]"
+        >
+          Change
+        </button>
+      </p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const code = digits.join('');
+          if (code.length === OTP_LENGTH) void submitOtp(code);
+        }}
+        className="mt-8 space-y-5"
+      >
+        <div className="flex justify-between gap-2" role="group" aria-label="One-time passcode">
+          {digits.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => {
+                boxRefs.current[i] = el;
+              }}
+              type="text"
+              inputMode="numeric"
+              autoComplete={i === 0 ? 'one-time-code' : 'off'}
+              maxLength={OTP_LENGTH}
+              value={digit}
+              onChange={(e) => setDigit(i, e.target.value)}
+              onKeyDown={(e) => onOtpKeyDown(i, e)}
+              aria-label={`Digit ${i + 1}`}
+              className="h-12 w-full min-w-0 border border-[var(--color-sand)] bg-[var(--color-paper)] text-center font-display text-xl focus:border-[var(--color-ink)] focus:outline-none sm:h-14"
+            />
+          ))}
+        </div>
+
+        {notice && !error && <p className="text-sm text-[var(--color-ink-soft)]">{notice}</p>}
         {error && <p className="text-sm text-[var(--color-sale)]">{error}</p>}
 
         <button type="submit" disabled={busy} className="btn btn-primary w-full disabled:opacity-50">
-          {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+          {busy ? 'Verifying…' : 'Verify & Continue'}
         </button>
       </form>
 
       <p className="mt-6 text-sm text-[var(--color-ink-soft)]">
-        {mode === 'login' ? "New here? " : 'Already have an account? '}
-        <button
-          onClick={() => {
-            setMode(mode === 'login' ? 'register' : 'login');
-            setError(null);
-          }}
-          className="link-underline font-semibold text-[var(--color-ink)]"
-        >
-          {mode === 'login' ? 'Create an account' : 'Sign in'}
-        </button>
-      </p>
-
-      <p className="mt-6 text-xs text-[var(--color-ink-mute)]">
-        Prefer not to sign in? You can still{' '}
-        <Link href="/account/orders" className="link-underline">track an order</Link> with your
-        order number and email.
+        Didn&rsquo;t receive the OTP?{' '}
+        {resendIn > 0 ? (
+          <span className="text-[var(--color-ink-mute)]">Resend OTP in {resendIn}s</span>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void sendOtp(true)}
+            className="link-underline font-semibold text-[var(--color-ink)] disabled:opacity-50"
+          >
+            Resend OTP
+          </button>
+        )}
       </p>
     </div>
   );

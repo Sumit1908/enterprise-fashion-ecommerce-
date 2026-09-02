@@ -74,6 +74,27 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
+      # Customer mobile-number + OTP login. Pick ONE SMS provider and fill its
+      # keys in the Render dashboard. Without them the API cannot text codes and
+      # customers can't sign in on the live site.
+      #   MSG91:  AUTH_KEY + SENDER_ID (+ optional OTP_TEMPLATE_ID) -> msg91.com
+      #   Twilio: ACCOUNT_SID + AUTH_TOKEN + FROM (a number or MG… Messaging SID)
+      - key: SMS_PROVIDER
+        value: msg91
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_SENDER_ID
+        sync: false
+      - key: MSG91_OTP_TEMPLATE_ID
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM
+        sync: false
+      - key: OTP_PEPPER
+        generateValue: true
 
   # ---------------------------------------------------------- Storefront (Next.js)
   - type: web

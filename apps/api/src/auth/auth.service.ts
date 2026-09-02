@@ -59,6 +59,44 @@ export class AuthService {
     return this.issueTokens(user.id, ctx);
   }
 
+  /**
+   * Sign in (or auto-register) a customer by an already-verified mobile number.
+   * Called only after OtpService.verify() has succeeded. No password involved.
+   */
+  async authByVerifiedPhone(
+    phoneE164: string,
+    ctx: TokenContext,
+    opts: { firstName?: string } = {},
+  ) {
+    const now = new Date();
+    const found = await this.prisma.user.findUnique({ where: { phone: phoneE164 } });
+    if (found?.status === 'BANNED') throw new UnauthorizedException('Account suspended');
+    const isNew = !found;
+
+    const user = found
+      ? await this.prisma.user.update({
+          where: { id: found.id },
+          data: {
+            phoneVerifiedAt: found.phoneVerifiedAt ?? now,
+            lastLoginAt: now,
+            ...(opts.firstName && !found.firstName ? { firstName: opts.firstName.trim() } : {}),
+          },
+        })
+      : await this.prisma.user.create({
+          data: {
+            phone: phoneE164,
+            phoneVerifiedAt: now,
+            firstName: opts.firstName?.trim() || null,
+            kind: 'CUSTOMER',
+            status: 'ACTIVE',
+            lastLoginAt: now,
+            loyaltyAccount: env.FEATURE_LOYALTY ? { create: {} } : undefined,
+          },
+        });
+
+    return { tokens: await this.issueTokens(user.id, ctx), isNew };
+  }
+
   async refresh(rawToken: string, ctx: TokenContext) {
     const tokenHash = this.sha256(rawToken);
     const record = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });

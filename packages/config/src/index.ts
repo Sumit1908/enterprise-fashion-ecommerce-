@@ -80,8 +80,17 @@ export const envSchema = z.object({
 
   SMS_PROVIDER: z.enum(['msg91', 'twilio']).default('msg91'),
   MSG91_AUTH_KEY: z.string().optional(),
+  MSG91_SENDER_ID: z.string().optional(), // 6-char DLT sender, e.g. VELORH
+  MSG91_OTP_TEMPLATE_ID: z.string().optional(), // MSG91 "OTP" flow template id
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM: z.string().optional(), // a Twilio phone number OR Messaging Service SID (MG…)
+  // Extra secret mixed into the OTP hash. Falls back to JWT_ACCESS_SECRET.
+  OTP_PEPPER: z.string().optional(),
+  OTP_TTL_SEC: z.coerce.number().default(300), // code validity
+  OTP_RESEND_COOLDOWN_SEC: z.coerce.number().default(30),
+  OTP_MAX_ATTEMPTS: z.coerce.number().default(5),
+  OTP_MAX_RESENDS: z.coerce.number().default(4),
 
   WHATSAPP_PROVIDER: z.enum(['meta', 'gupshup']).default('meta'),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),

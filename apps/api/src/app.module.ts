@@ -16,6 +16,7 @@ import { PaymentsModule } from './payments/payments.module.js';
 import { CartModule } from './cart/cart.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { EmailModule } from './email/email.module.js';
+import { SmsModule } from './sms/sms.module.js';
 import { NewsletterModule } from './newsletter/newsletter.module.js';
 import { WishlistModule } from './wishlist/wishlist.module.js';
 
@@ -32,6 +33,7 @@ const env = loadEnv();
     PrismaModule,
     CommonModule,
     EmailModule,
+    SmsModule,
     HealthModule,
     AuthModule,
     MediaModule,

@@ -54,3 +54,30 @@ export class RefreshDto {
   @IsString()
   refreshToken?: string;
 }
+
+/** Step 1 of mobile-number customer auth — send a one-time code. */
+export class RequestOtpDto {
+  @ApiProperty({ example: '+919000000000' })
+  @IsString()
+  @MaxLength(20)
+  phone!: string;
+}
+
+/** Step 2 — verify the code; creates or signs in the customer. */
+export class VerifyOtpDto {
+  @ApiProperty({ example: '+919000000000' })
+  @IsString()
+  @MaxLength(20)
+  phone!: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @Matches(/^\d{4,8}$/)
+  otp!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  firstName?: string;
+}
