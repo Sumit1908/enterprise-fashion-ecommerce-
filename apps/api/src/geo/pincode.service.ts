@@ -254,21 +254,34 @@ export class PincodeService {
     }
 
     const list = offices as Array<Record<string, string | null>>;
-    const primary =
-      list.find((o) => /head/i.test(o.BranchType ?? '')) ??
+
+    // A single PIN can list several post offices; a stray one occasionally
+    // carries a neighbouring district. Take the most common (district, state)
+    // pair, giving delivery-capable offices a heavier vote.
+    const tally = new Map<string, { district: string; state: string; score: number }>();
+    for (const o of list) {
+      const district = (o.District ?? '').trim();
+      const state = (o.State ?? '').trim();
+      if (!district || !state) continue;
+      const key = `${district}|${state}`;
+      const weight = (o.DeliveryStatus ?? '').toLowerCase() === 'delivery' ? 2 : 1;
+      const cur = tally.get(key) ?? { district, state, score: 0 };
+      cur.score += weight;
+      tally.set(key, cur);
+    }
+    const best = [...tally.values()].sort((a, b) => b.score - a.score)[0];
+    if (!best) return null;
+
+    const headOffice =
+      list.find((o) => (o.BranchType ?? '').trim().toLowerCase() === 'head post office') ??
       list.find((o) => (o.DeliveryStatus ?? '').toLowerCase() === 'delivery') ??
       list[0];
-    if (!primary) return null;
-
-    const state = (primary.State ?? '').trim();
-    const district = (primary.District ?? '').trim();
-    if (!state || !district) return null;
 
     return {
-      city: district,
-      district,
-      state,
-      area: (primary.Name ?? '').trim() || null,
+      city: best.district,
+      district: best.district,
+      state: best.state,
+      area: (headOffice?.Name ?? '').trim() || null,
     };
   }
 

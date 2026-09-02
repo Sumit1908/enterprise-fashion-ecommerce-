@@ -91,6 +91,26 @@ describe('PincodeService.resolve', () => {
     expect(globalThis.fetch).toHaveBeenCalledOnce();
   });
 
+  it('picks the majority district when a PIN lists a stray neighbouring one', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [
+        {
+          Status: 'Success',
+          PostOffice: [
+            { Name: 'Elephanta Caves Po', BranchType: 'Branch Office', DeliveryStatus: 'Delivery', District: 'Raigarh(MH)', State: 'Maharashtra' },
+            { Name: 'Mumbai GPO', BranchType: 'Head Post Office', DeliveryStatus: 'Delivery', District: 'Mumbai', State: 'Maharashtra' },
+            { Name: 'Bazargate', BranchType: 'Sub Post Office', DeliveryStatus: 'Non-Delivery', District: 'Mumbai', State: 'Maharashtra' },
+            { Name: 'Town Hall', BranchType: 'Sub Post Office', DeliveryStatus: 'Non-Delivery', District: 'Mumbai', State: 'Maharashtra' },
+          ],
+        },
+      ],
+    } as unknown as Response);
+    const r = await svc(makePrisma()).resolve('400001');
+    expect(r).toMatchObject({ city: 'Mumbai', district: 'Mumbai', state: 'Maharashtra' });
+  });
+
   it('returns null when India Post has no record for the PIN', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
