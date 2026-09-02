@@ -62,6 +62,18 @@ services:
         sync: false
       - key: SMTP_PASSWORD
         sync: false
+      # Razorpay live payments — add the real values in the Render dashboard,
+      # never in Git. Without these, checkout stays Cash-on-Delivery only.
+      #   KEY_ID / KEY_SECRET  -> Razorpay Dashboard > Settings > API Keys
+      #   WEBHOOK_SECRET       -> Razorpay Dashboard > Settings > Webhooks
+      #   Webhook URL to add:  https://slay-jeans-api.onrender.com/api/v1/webhooks/payments/razorpay
+      #   Events:  payment.captured, payment.failed, order.paid
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
 
   # ---------------------------------------------------------- Storefront (Next.js)
   - type: web

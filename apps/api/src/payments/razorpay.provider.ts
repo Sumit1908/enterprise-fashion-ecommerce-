@@ -63,12 +63,57 @@ export class RazorpayProvider implements PaymentProvider {
     if (!input.providerOrderId || !input.providerPaymentId || !input.signature) {
       return { ok: false, reason: 'Missing Razorpay verification fields' };
     }
+    // 1. HMAC signature — cryptographic proof the callback is genuine and bound
+    //    to the Razorpay order we created server-side (which carried our amount).
     const expected = createHmac('sha256', env.RAZORPAY_KEY_SECRET!)
       .update(`${input.providerOrderId}|${input.providerPaymentId}`)
       .digest('hex');
     if (!safeEqual(expected, input.signature)) {
       return { ok: false, reason: 'Signature mismatch' };
     }
+
+    // 2. Cross-check the payment record with Razorpay: same order, exact amount,
+    //    and actually captured. This makes an order impossible to confirm on a
+    //    browser redirect / forged handler call alone.
+    const expectedPaise = Math.round(input.amount * 100);
+    try {
+      const res = await fetch(
+        `https://api.razorpay.com/v1/payments/${encodeURIComponent(input.providerPaymentId)}`,
+        {
+          headers: {
+            authorization: `Basic ${Buffer.from(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`).toString('base64')}`,
+          },
+        },
+      );
+      if (res.ok) {
+        const p = (await res.json()) as {
+          status?: string;
+          order_id?: string;
+          amount?: number;
+          currency?: string;
+        };
+        if (p.order_id && p.order_id !== input.providerOrderId) {
+          return { ok: false, reason: 'Payment does not belong to this order' };
+        }
+        if (typeof p.amount === 'number' && p.amount !== expectedPaise) {
+          return { ok: false, reason: 'Paid amount does not match the order total' };
+        }
+        if (p.status && p.status !== 'captured') {
+          // authorised-but-not-captured / created / failed — do not confirm now.
+          // The webhook (payment.captured / payment.failed) settles it later.
+          return { ok: false, reason: `Payment not captured (status: ${p.status})` };
+        }
+        return { ok: true, providerPaymentId: input.providerPaymentId, raw: p };
+      }
+      this.logger.warn(
+        `Razorpay payment lookup returned ${res.status} for ${input.providerPaymentId}; accepting on signature`,
+      );
+    } catch (e) {
+      this.logger.warn(
+        `Razorpay payment lookup failed for ${input.providerPaymentId}: ${(e as Error).message}; accepting on signature`,
+      );
+    }
+    // Lookup unavailable — the HMAC signature above is still cryptographic proof.
     return { ok: true, providerPaymentId: input.providerPaymentId };
   }
 

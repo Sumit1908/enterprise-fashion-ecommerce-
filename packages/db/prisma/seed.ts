@@ -314,9 +314,10 @@ async function seedSettings() {
     ['checkout', 'checkout.guestEnabled', true, 'Allow guest checkout'],
     ['checkout', 'checkout.minOrderAmount', 0, 'Minimum order amount'],
     ['checkout', 'checkout.codEnabled', true, 'Enable Cash on Delivery'],
-    // COD-only for launch. Add 'RAZORPAY' here (and set RAZORPAY_* env keys) to
-    // turn on online card / UPI / net-banking payments later.
-    ['payment', 'payment.enabledMethods', ['COD'], 'Enabled payment methods'],
+    // COD + Razorpay online payments. "RAZORPAY" only actually appears at checkout
+    // once RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are set on the API service; until
+    // then the storefront silently shows Cash on Delivery only.
+    ['payment', 'payment.enabledMethods', ['COD', 'RAZORPAY'], 'Enabled payment methods'],
     ['shipping', 'shipping.freeShippingThreshold', 999, 'Free shipping above'],
     ['shipping', 'shipping.defaultProvider', 'shiprocket', 'Default courier aggregator'],
     ['tax', 'tax.pricesIncludeTax', true, 'Displayed prices include tax'],

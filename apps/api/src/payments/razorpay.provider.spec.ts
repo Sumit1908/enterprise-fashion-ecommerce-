@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 // The provider reads env at import time via @slay/config.
 process.env.RAZORPAY_KEY_ID ??= 'rzp_test_key';
@@ -16,24 +16,73 @@ beforeAll(async () => {
 });
 
 describe('RazorpayProvider.verify (checkout callback signature)', () => {
-  it('accepts a correctly signed order|payment pair', async () => {
-    const p = new RazorpayProvider();
-    const providerOrderId = 'order_ABC123';
-    const providerPaymentId = 'pay_XYZ789';
-    const signature = createHmac('sha256', 'rzp_test_secret')
+  const providerOrderId = 'order_ABC123';
+  const providerPaymentId = 'pay_XYZ789';
+  const goodSig = () =>
+    createHmac('sha256', 'rzp_test_secret')
       .update(`${providerOrderId}|${providerPaymentId}`)
       .digest('hex');
+  const mockPaymentLookup = (body: unknown, ok = true) =>
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok,
+      status: ok ? 200 : 500,
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    } as Response);
 
+  afterEach(() => vi.restoreAllMocks());
+
+  it('accepts a signed pair when Razorpay confirms a captured payment of the right amount', async () => {
+    const p = new RazorpayProvider();
+    mockPaymentLookup({ status: 'captured', order_id: providerOrderId, amount: 10000, currency: 'INR' });
     const res = await p.verify({
-      paymentId: 'p1',
-      orderNumber: 'SJ-1',
-      amount: 100,
-      providerOrderId,
-      providerPaymentId,
-      signature,
+      paymentId: 'p1', orderNumber: 'SJ-1', amount: 100,
+      providerOrderId, providerPaymentId, signature: goodSig(),
     });
     expect(res.ok).toBe(true);
     expect(res.providerPaymentId).toBe(providerPaymentId);
+  });
+
+  it('rejects when Razorpay reports a different amount than the order total', async () => {
+    const p = new RazorpayProvider();
+    mockPaymentLookup({ status: 'captured', order_id: providerOrderId, amount: 1, currency: 'INR' });
+    const res = await p.verify({
+      paymentId: 'p1', orderNumber: 'SJ-1', amount: 100,
+      providerOrderId, providerPaymentId, signature: goodSig(),
+    });
+    expect(res.ok).toBe(false);
+    expect(res.reason).toMatch(/amount/i);
+  });
+
+  it('rejects when the payment is not captured', async () => {
+    const p = new RazorpayProvider();
+    mockPaymentLookup({ status: 'authorized', order_id: providerOrderId, amount: 10000 });
+    const res = await p.verify({
+      paymentId: 'p1', orderNumber: 'SJ-1', amount: 100,
+      providerOrderId, providerPaymentId, signature: goodSig(),
+    });
+    expect(res.ok).toBe(false);
+    expect(res.reason).toMatch(/not captured/i);
+  });
+
+  it('rejects when the payment belongs to a different order', async () => {
+    const p = new RazorpayProvider();
+    mockPaymentLookup({ status: 'captured', order_id: 'order_SOMEONE_ELSE', amount: 10000 });
+    const res = await p.verify({
+      paymentId: 'p1', orderNumber: 'SJ-1', amount: 100,
+      providerOrderId, providerPaymentId, signature: goodSig(),
+    });
+    expect(res.ok).toBe(false);
+  });
+
+  it('falls back to signature-only acceptance if the Razorpay lookup is unavailable', async () => {
+    const p = new RazorpayProvider();
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
+    const res = await p.verify({
+      paymentId: 'p1', orderNumber: 'SJ-1', amount: 100,
+      providerOrderId, providerPaymentId, signature: goodSig(),
+    });
+    expect(res.ok).toBe(true);
   });
 
   it('rejects a tampered signature', async () => {
@@ -100,5 +149,3 @@ describe('RazorpayProvider.verifyWebhook', () => {
     expect(res.handled).toBe(false);
   });
 });
-
-vi.stubGlobal('fetch', vi.fn());

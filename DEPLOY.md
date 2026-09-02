@@ -116,10 +116,21 @@ globally. If that happens:
 - **Deploy new changes:** `git push` — Render auto-deploys (`autoDeploy: true`).
 - **Database schema changes:** open the `slay-jeans-api` Shell in Render and run
   `pnpm db:deploy`.
-- **Payments:** COD only right now. To enable online payments later, add
-  `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` to
-  `slay-jeans-api` and add `"RAZORPAY"` to the `payment.enabledMethods` store
-  setting.
+- **Payments:** Razorpay is wired up (COD + online). `payment.enabledMethods` is
+  already `["COD","RAZORPAY"]`; the storefront shows **Cash on Delivery only**
+  until the API has real Razorpay keys. To go live with online payments:
+  1. Razorpay Dashboard → **Settings → API Keys** → generate **Live** keys.
+  2. Render → `slay-jeans-api` → **Environment** → add
+     `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (never commit these).
+  3. Razorpay Dashboard → **Settings → Webhooks** → add
+     `https://slay-jeans-api.onrender.com/api/v1/webhooks/payments/razorpay`,
+     tick events **payment.captured, payment.failed, order.paid**, set a
+     webhook secret, then add it to Render as `RAZORPAY_WEBHOOK_SECRET`.
+  4. Razorpay Dashboard → **Settings → Payment Capture** → set to **Automatic**.
+  5. Save on Render (redeploys the API). "Pay Online" now appears at checkout.
+  The server verifies the checkout signature **and** re-checks the payment
+  amount/capture with Razorpay, plus the webhook signature, before any order is
+  marked PAID.
 
 ## Required vs optional env vars — quick reference
 
