@@ -14,7 +14,7 @@ async function getTree(): Promise<CategoryNode[]> {
 }
 
 const ANNOUNCEMENTS = [
-  'Complimentary shipping on orders over ₹999',
+  'Timeless style. Delivered to your door.',
   'Easy 7-day returns · Cash on Delivery available',
   'New season, new arrivals — for men, women & kids',
 ];
