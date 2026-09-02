@@ -54,11 +54,22 @@ export class AuthController {
   /* ----------------------------- mobile OTP (customers) ---------------------- */
 
   /** Tells the storefront which OTP transport is live (+ the browser-safe widget
-   *  params), without exposing the authkey. */
+   *  params, OTP length and resend time), without exposing the authkey. */
   @Public()
   @Get('otp/config')
-  otpConfig() {
-    return { ...this.msg91Widget.publicConfig(), sms: true };
+  async otpConfig() {
+    const base = this.msg91Widget.publicConfig();
+    const info = base.widget ? await this.msg91Widget.widgetInfo() : null;
+    return {
+      ...base,
+      // If MSG91 explicitly reports the widget disabled, don't offer it.
+      widget: base.widget && info?.enabled !== false,
+      otpLength: info?.otpLength ?? 6,
+      // Lets the client re-check the OTP length with MSG91 if we couldn't.
+      otpLengthKnown: info != null,
+      widgetResendInSec: info?.retryTime ?? null,
+      sms: true,
+    };
   }
 
   @Public()

@@ -293,6 +293,9 @@ export const storefront = {
       widget: boolean;
       widgetId: string | null;
       tokenAuth: string | null;
+      otpLength: number;
+      otpLengthKnown: boolean;
+      widgetResendInSec: number | null;
       sms: boolean;
     }>('/auth/otp/config'),
   /** MSG91 Secure OTP widget — the browser verified the code; the server checks the token. */

@@ -15,7 +15,7 @@ export default function AccountPage() {
   );
 }
 
-const OTP_LENGTH = 6;
+const SMS_OTP_LENGTH = 6;
 
 /** Keep only digits and cap at 10 (Indian mobile numbers). */
 function cleanMobile(raw: string): string {
@@ -35,16 +35,21 @@ function AccountInner() {
   const router = useRouter();
   const nextParam = useSearchParams().get('next');
 
-  // If the widget is configured but fails at runtime (e.g. a bad widget id in
-  // the dashboard), we drop to the SMS OTP flow for the rest of the session so
-  // sign-in still works. `useWidget` reflects the *current* transport.
+  // If the widget is configured but fails at runtime (bad id, captcha unsolved,
+  // timeout), we drop to the SMS OTP flow for the rest of the session so sign-in
+  // still works. `widgetActive` = the widget is our transport for the NEXT send.
   const [widgetFailed, setWidgetFailed] = useState(false);
-  const useWidget = widget.enabled && !widget.initError && !widgetFailed;
+  const widgetActive = widget.enabled && !widget.initError && !widgetFailed;
+  // What the phone step should promise (the widget's length is 4 or 6).
+  const predictedLen = widgetActive ? widget.otpLength : SMS_OTP_LENGTH;
 
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  // Locked in once an OTP is actually sent, so the code screen never shifts.
+  const [transport, setTransport] = useState<'widget' | 'sms'>('sms');
+  const [codeLen, setCodeLen] = useState(SMS_OTP_LENGTH);
   const [mobile, setMobile] = useState('');
   const [firstName, setFirstName] = useState('');
-  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const [digits, setDigits] = useState<string[]>(Array(SMS_OTP_LENGTH).fill(''));
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -59,28 +64,41 @@ function AccountInner() {
     return () => clearInterval(t);
   }, [resendIn]);
 
-  const advanceToOtpStep = useCallback((isResend: boolean, notice: string | null) => {
-    setResendIn(30);
-    setStep('otp');
-    if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
-    setNotice(notice);
-    setTimeout(() => boxRefs.current[0]?.focus(), 50);
-  }, []);
+  const goToOtpStep = useCallback(
+    (opts: {
+      transport: 'widget' | 'sms';
+      length: number;
+      isResend: boolean;
+      notice: string | null;
+      cooldown: number;
+    }) => {
+      setTransport(opts.transport);
+      setCodeLen(opts.length);
+      setResendIn(opts.cooldown);
+      setStep('otp');
+      if (!opts.isResend) setDigits(Array(opts.length).fill(''));
+      setNotice(opts.notice);
+      setTimeout(() => boxRefs.current[0]?.focus(), 50);
+    },
+    [],
+  );
 
   const sendViaSms = useCallback(
     async (isResend: boolean) => {
       const res = await requestOtp(`+91${mobile}`);
-      advanceToOtpStep(
+      goToOtpStep({
+        transport: 'sms',
+        length: SMS_OTP_LENGTH,
         isResend,
-        res.devCode
+        notice: res.devCode
           ? `Development mode — your code is ${res.devCode}`
           : isResend
             ? 'A new OTP is on its way.'
             : null,
-      );
-      if (res.resendInSec) setResendIn(res.resendInSec);
+        cooldown: res.resendInSec || 30,
+      });
     },
-    [mobile, requestOtp, advanceToOtpStep],
+    [mobile, requestOtp, goToOtpStep],
   );
 
   const sendOtp = useCallback(
@@ -89,14 +107,21 @@ function AccountInner() {
       setNotice(null);
       setBusy(true);
       try {
-        if (useWidget) {
+        const tryWidget = isResend ? transport === 'widget' : widgetActive;
+        if (tryWidget) {
           try {
             if (isResend) await widget.retryOtp();
             else await widget.sendOtp(mobile);
-            advanceToOtpStep(isResend, isResend ? 'A new OTP is on its way.' : null);
+            goToOtpStep({
+              transport: 'widget',
+              length: widget.otpLength,
+              isResend,
+              notice: isResend ? 'A new OTP is on its way.' : null,
+              cooldown: widget.resendInSec ?? 30,
+            });
             return;
           } catch {
-            // Widget misconfigured / unreachable — fall through to the SMS flow.
+            // Widget failed (bad id, captcha unsolved, timeout) — fall to SMS.
             setWidgetFailed(true);
           }
         }
@@ -113,10 +138,10 @@ function AccountInner() {
         setBusy(false);
       }
     },
-    [mobile, useWidget, widget, sendViaSms, advanceToOtpStep],
+    [mobile, transport, widgetActive, widget, sendViaSms, goToOtpStep],
   );
 
-  const preparing = !widget.resolved || (useWidget && !widget.ready);
+  const preparing = !widget.resolved || (widgetActive && !widget.ready);
 
   async function submitPhone(e: React.FormEvent) {
     e.preventDefault();
@@ -135,7 +160,7 @@ function AccountInner() {
       setBusy(true);
       try {
         const name = firstName.trim() || undefined;
-        if (useWidget) {
+        if (transport === 'widget') {
           const token = await widget.verifyOtp(code);
           await verifyWidgetOtp(`+91${mobile}`, token, name);
         } else {
@@ -143,7 +168,7 @@ function AccountInner() {
         }
         router.push(nextParam || '/account');
       } catch (err) {
-        setDigits(Array(OTP_LENGTH).fill(''));
+        setDigits(Array(codeLen).fill(''));
         setTimeout(() => boxRefs.current[0]?.focus(), 50);
         setError(
           err instanceof ApiError
@@ -157,7 +182,7 @@ function AccountInner() {
         submittingRef.current = false;
       }
     },
-    [mobile, firstName, useWidget, widget, verifyOtp, verifyWidgetOtp, router, nextParam],
+    [mobile, firstName, codeLen, transport, widget, verifyOtp, verifyWidgetOtp, router, nextParam],
   );
 
   function setDigit(index: number, value: string) {
@@ -169,14 +194,14 @@ function AccountInner() {
     setDigits((prev) => {
       const next = [...prev];
       // support paste of the full code into any box
-      const incoming = chars.slice(0, OTP_LENGTH - index).split('');
+      const incoming = chars.slice(0, codeLen - index).split('');
       incoming.forEach((c, i) => {
         next[index + i] = c;
       });
-      const filledTo = Math.min(index + incoming.length, OTP_LENGTH - 1);
+      const filledTo = Math.min(index + incoming.length, codeLen - 1);
       setTimeout(() => boxRefs.current[filledTo]?.focus(), 0);
       const joined = next.join('');
-      if (joined.length === OTP_LENGTH && !next.includes('')) {
+      if (joined.length === codeLen && !next.includes('')) {
         setTimeout(() => void submitOtp(joined), 0);
       }
       return next;
@@ -188,7 +213,7 @@ function AccountInner() {
       boxRefs.current[index - 1]?.focus();
     }
     if (e.key === 'ArrowLeft' && index > 0) boxRefs.current[index - 1]?.focus();
-    if (e.key === 'ArrowRight' && index < OTP_LENGTH - 1) boxRefs.current[index + 1]?.focus();
+    if (e.key === 'ArrowRight' && index < codeLen - 1) boxRefs.current[index + 1]?.focus();
   }
 
   if (!ready) {
@@ -241,7 +266,7 @@ function AccountInner() {
         <p className="eyebrow">Welcome to Velor House</p>
         <h1 className="mt-3 font-display text-3xl sm:text-4xl">Enter your mobile number</h1>
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-          We&rsquo;ll send you a 6-digit code to sign in. No password needed.
+          We&rsquo;ll send you a {predictedLen}-digit code to sign in. No password needed.
         </p>
 
         <form onSubmit={submitPhone} className="mt-8 space-y-4">
@@ -297,7 +322,7 @@ function AccountInner() {
       <p className="eyebrow">Verify your mobile number</p>
       <h1 className="mt-3 font-display text-3xl sm:text-4xl">Enter the OTP</h1>
       <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-        We&rsquo;ve sent a 6-digit OTP to{' '}
+        We&rsquo;ve sent a {codeLen}-digit OTP to{' '}
         <span className="font-medium text-[var(--color-ink)]">{prettyPhone(mobile)}</span>.{' '}
         <button
           type="button"
@@ -316,11 +341,15 @@ function AccountInner() {
         onSubmit={(e) => {
           e.preventDefault();
           const code = digits.join('');
-          if (code.length === OTP_LENGTH) void submitOtp(code);
+          if (code.length === codeLen) void submitOtp(code);
         }}
         className="mt-8 space-y-5"
       >
-        <div className="flex justify-between gap-2" role="group" aria-label="One-time passcode">
+        <div
+          className={`flex gap-2 sm:gap-3 ${codeLen <= 4 ? 'mx-auto max-w-[16rem]' : ''}`}
+          role="group"
+          aria-label="One-time passcode"
+        >
           {digits.map((digit, i) => (
             <input
               key={i}
@@ -330,7 +359,7 @@ function AccountInner() {
               type="text"
               inputMode="numeric"
               autoComplete={i === 0 ? 'one-time-code' : 'off'}
-              maxLength={OTP_LENGTH}
+              maxLength={codeLen}
               value={digit}
               onChange={(e) => setDigit(i, e.target.value)}
               onKeyDown={(e) => onOtpKeyDown(i, e)}
@@ -343,7 +372,11 @@ function AccountInner() {
         {notice && !error && <p className="text-sm text-[var(--color-ink-soft)]">{notice}</p>}
         {error && <p className="text-sm text-[var(--color-sale)]">{error}</p>}
 
-        <button type="submit" disabled={busy} className="btn btn-primary w-full disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={busy || digits.join('').length !== codeLen}
+          className="btn btn-primary w-full disabled:opacity-50"
+        >
           {busy ? 'Verifying…' : 'Verify & Continue'}
         </button>
       </form>

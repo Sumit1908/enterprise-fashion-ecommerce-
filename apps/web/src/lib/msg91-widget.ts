@@ -8,10 +8,13 @@
  * so the on-screen UI stays 100% Velor House; the token then goes to our API
  * (`POST /auth/otp/widget/verify`) which validates it with MSG91 server-side.
  *
- * The widget id + token auth are public. They come from `GET /auth/otp/config`
- * (set once on the API) or, as a fallback, from NEXT_PUBLIC_* build vars. The
- * MSG91 authkey never leaves the server. The deprecated verification webhook is
- * not used.
+ * The widget id + token auth are public and come from `GET /auth/otp/config`
+ * (set once on the API), with NEXT_PUBLIC_* build vars as a fallback. The MSG91
+ * authkey never leaves the server. The deprecated verification webhook is unused.
+ *
+ * If the widget's captcha challenges a visitor, hCaptcha renders into a small
+ * container we mount on <body> (`CAPTCHA_ID`); most real users pass invisibly.
+ * Any widget failure (bad config, captcha unsolved, timeout) falls back to SMS.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { storefront } from './storefront';
@@ -20,6 +23,11 @@ const NEXT_PUBLIC_WIDGET_ID = process.env.NEXT_PUBLIC_MSG91_WIDGET_ID ?? '';
 const NEXT_PUBLIC_TOKEN_AUTH = process.env.NEXT_PUBLIC_MSG91_TOKEN_AUTH ?? '';
 
 const SCRIPT_SRC = 'https://verify.msg91.com/otp-provider.js';
+const CAPTCHA_ID = 'msg91-captcha-slot';
+// Sending can involve the shopper solving a captcha challenge, so be generous;
+// verification is a quick round-trip.
+const SEND_TIMEOUT_MS = 45000;
+const VERIFY_TIMEOUT_MS = 20000;
 
 type Cb = (data: unknown) => void;
 interface Msg91Config {
@@ -43,6 +51,32 @@ interface ResolvedConfig {
   enabled: boolean;
   widgetId: string;
   tokenAuth: string;
+  otpLength: number;
+  resendInSec: number | null;
+}
+
+const WIDGET_INFO_URL = 'https://control.msg91.com/api/v5/widget/getWidgetProcess';
+const okLen = (n: unknown): n is number => typeof n === 'number' && n >= 4 && n <= 8;
+
+/** Ask MSG91 directly for the widget's OTP length — used only if the API couldn't. */
+async function fetchWidgetInfo(
+  widgetId: string,
+  tokenAuth: string,
+): Promise<{ otpLength?: number; resendInSec?: number }> {
+  try {
+    const res = await fetch(`${WIDGET_INFO_URL}?widgetId=${encodeURIComponent(widgetId)}`, {
+      headers: { tokenauth: tokenAuth, accept: 'application/json' },
+      signal: AbortSignal.timeout(6000),
+    });
+    const j = (await res.json()) as { data?: { otpLength?: number; retryTime?: number }; hasError?: boolean };
+    if (!res.ok || j.hasError || !j.data) return {};
+    return {
+      otpLength: okLen(j.data.otpLength) ? j.data.otpLength : undefined,
+      resendInSec: typeof j.data.retryTime === 'number' ? j.data.retryTime : undefined,
+    };
+  } catch {
+    return {};
+  }
 }
 
 let configPromise: Promise<ResolvedConfig> | null = null;
@@ -50,12 +84,22 @@ function resolveConfig(): Promise<ResolvedConfig> {
   if (configPromise) return configPromise;
   configPromise = storefront
     .otpConfig()
-    .then((c) => {
+    .then(async (c) => {
       const widgetId = c.widgetId || NEXT_PUBLIC_WIDGET_ID;
       const tokenAuth = c.tokenAuth || NEXT_PUBLIC_TOKEN_AUTH;
-      return { enabled: Boolean(c.widget && widgetId && tokenAuth), widgetId, tokenAuth };
+      const enabled = Boolean(c.widget && widgetId && tokenAuth);
+
+      let otpLength = okLen(c.otpLength) ? c.otpLength : 6;
+      let resendInSec = c.widgetResendInSec ?? null;
+      // The API couldn't reach MSG91 for the OTP length — confirm it client-side.
+      if (enabled && !c.otpLengthKnown) {
+        const info = await fetchWidgetInfo(widgetId, tokenAuth);
+        if (info.otpLength) otpLength = info.otpLength;
+        if (info.resendInSec != null) resendInSec = info.resendInSec;
+      }
+      return { enabled, widgetId, tokenAuth, otpLength, resendInSec };
     })
-    .catch(() => ({ enabled: false, widgetId: '', tokenAuth: '' }));
+    .catch(() => ({ enabled: false, widgetId: '', tokenAuth: '', otpLength: 6, resendInSec: null }));
   return configPromise;
 }
 
@@ -76,6 +120,16 @@ function loadScript(): Promise<void> {
     document.head.appendChild(el);
   });
   return scriptPromise;
+}
+
+/** A place for the captcha to render if the widget ever needs to challenge. */
+function ensureCaptchaSlot(): void {
+  if (typeof document === 'undefined' || document.getElementById(CAPTCHA_ID)) return;
+  const el = document.createElement('div');
+  el.id = CAPTCHA_ID;
+  el.style.cssText =
+    'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147483647';
+  document.body.appendChild(el);
 }
 
 /** Long, JWT-ish strings only — never a status message like "OTP verified". */
@@ -139,9 +193,13 @@ export interface Msg91Otp {
   ready: boolean;
   /** Non-fatal init error (script blocked, bad config). Caller falls back to SMS. */
   initError: string | null;
+  /** Digits in the widget's OTP (from MSG91). 6 when the widget isn't in use. */
+  otpLength: number;
+  /** Seconds before "Resend" is allowed on the widget, if MSG91 specified one. */
+  resendInSec: number | null;
   /** Send an OTP. `mobile` = 10 local digits; country code (91) is added here. */
   sendOtp: (mobile: string) => Promise<void>;
-  /** Resend via SMS. */
+  /** Resend the OTP (SMS channel). */
   retryOtp: () => Promise<void>;
   /** Verify the code; resolves with the access token for the server to check. */
   verifyOtp: (code: string) => Promise<string>;
@@ -152,6 +210,8 @@ export function useMsg91Otp(): Msg91Otp {
   const [resolved, setResolved] = useState(false);
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [otpLength, setOtpLength] = useState(6);
+  const [resendInSec, setResendInSec] = useState<number | null>(null);
   const tokenRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -161,16 +221,20 @@ export function useMsg91Otp(): Msg91Otp {
         if (cancelled) return;
         setResolved(true);
         setEnabled(cfg.enabled);
+        setOtpLength(cfg.otpLength);
+        setResendInSec(cfg.resendInSec);
         if (!cfg.enabled) return;
         return loadScript().then(() => {
           if (cancelled) return;
           if (typeof window.initSendOTP !== 'function') {
             throw new Error('widget did not initialise');
           }
+          ensureCaptchaSlot();
           window.initSendOTP({
             widgetId: cfg.widgetId,
             tokenAuth: cfg.tokenAuth,
             exposeMethods: true,
+            captchaRenderId: CAPTCHA_ID,
             success: (data) => {
               const t = extractToken(data);
               if (t) tokenRef.current = t;
@@ -203,7 +267,7 @@ export function useMsg91Otp(): Msg91Otp {
         () => resolve(),
         (e) => reject(new Error(errorMessage(e, 'Could not send the OTP. Please try again.'))),
       );
-    }, 20000);
+    }, SEND_TIMEOUT_MS);
   }, []);
 
   const retryOtp = useCallback(async () => {
@@ -214,7 +278,7 @@ export function useMsg91Otp(): Msg91Otp {
         () => resolve(),
         (e) => reject(new Error(errorMessage(e, 'Could not resend the OTP. Please try again.'))),
       );
-    }, 20000);
+    }, SEND_TIMEOUT_MS);
   }, []);
 
   const verifyOtp = useCallback(async (code: string) => {
@@ -229,11 +293,21 @@ export function useMsg91Otp(): Msg91Otp {
         },
         (e) => reject(new Error(errorMessage(e, 'That code is incorrect or expired.'))),
       );
-    }, 20000);
+    }, VERIFY_TIMEOUT_MS);
   }, []);
 
   return useMemo(
-    () => ({ enabled, resolved, ready, initError, sendOtp, retryOtp, verifyOtp }),
-    [enabled, resolved, ready, initError, sendOtp, retryOtp, verifyOtp],
+    () => ({
+      enabled,
+      resolved,
+      ready,
+      initError,
+      otpLength,
+      resendInSec,
+      sendOtp,
+      retryOtp,
+      verifyOtp,
+    }),
+    [enabled, resolved, ready, initError, otpLength, resendInSec, sendOtp, retryOtp, verifyOtp],
   );
 }

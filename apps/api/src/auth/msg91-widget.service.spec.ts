@@ -119,3 +119,62 @@ describe('Msg91WidgetService.verifyAccessToken', () => {
     }
   });
 });
+
+describe('Msg91WidgetService.widgetInfo', () => {
+  const withWidgetEnv = async (fn: () => Promise<void>) => {
+    const env = loadEnv() as { MSG91_WIDGET_ID?: string; MSG91_WIDGET_TOKEN_AUTH?: string };
+    const saved = { ...env };
+    env.MSG91_WIDGET_ID = 'w-abc';
+    env.MSG91_WIDGET_TOKEN_AUTH = 't-xyz';
+    try {
+      await fn();
+    } finally {
+      env.MSG91_WIDGET_ID = saved.MSG91_WIDGET_ID;
+      env.MSG91_WIDGET_TOKEN_AUTH = saved.MSG91_WIDGET_TOKEN_AUTH;
+    }
+  };
+
+  it('parses otpLength / retryTime / enabled and sends the tokenauth header', async () => {
+    await withWidgetEnv(async () => {
+      const spy = mockFetch({
+        data: { otpLength: 4, retryTime: 10, status: { value: '1' } },
+        hasError: false,
+      });
+      const info = await new Msg91WidgetService().widgetInfo();
+      expect(info).toEqual({ enabled: true, otpLength: 4, retryTime: 10 });
+      const [url, init] = spy.mock.calls[0]!;
+      expect(String(url)).toContain('getWidgetProcess?widgetId=w-abc');
+      expect((init as RequestInit).headers).toMatchObject({ tokenauth: 't-xyz' });
+    });
+  });
+
+  it('reports disabled when MSG91 status is not "1"', async () => {
+    await withWidgetEnv(async () => {
+      mockFetch({ data: { otpLength: 6, retryTime: 15, status: { value: '2' } }, hasError: false });
+      const info = await new Msg91WidgetService().widgetInfo();
+      expect(info?.enabled).toBe(false);
+    });
+  });
+
+  it('returns null (and does not throw) when MSG91 errors', async () => {
+    await withWidgetEnv(async () => {
+      mockFetch({ hasError: true, errors: 'Invalid Widget Id' });
+      expect(await new Msg91WidgetService().widgetInfo()).toBeNull();
+    });
+  });
+
+  it('returns null when the widget is not configured', async () => {
+    const env = loadEnv() as { MSG91_WIDGET_ID?: string; MSG91_WIDGET_TOKEN_AUTH?: string };
+    const saved = { ...env };
+    env.MSG91_WIDGET_ID = undefined;
+    env.MSG91_WIDGET_TOKEN_AUTH = undefined;
+    try {
+      const spy = vi.spyOn(globalThis, 'fetch');
+      expect(await new Msg91WidgetService().widgetInfo()).toBeNull();
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      env.MSG91_WIDGET_ID = saved.MSG91_WIDGET_ID;
+      env.MSG91_WIDGET_TOKEN_AUTH = saved.MSG91_WIDGET_TOKEN_AUTH;
+    }
+  });
+});
