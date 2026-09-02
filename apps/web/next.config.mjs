@@ -22,6 +22,15 @@ const nextConfig = {
     return [
       // Older combined page split into two policy pages.
       { source: '/pages/shipping-returns', destination: '/pages/shipping-policy', permanent: true },
+      // Canonical domain. The Render default hostname permanently (308) redirects
+      // to velorhouse.in, keeping the full path and query string. The `has` host
+      // guard means it never fires once the visitor is on velorhouse.in — no loop.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'slay-jeans-web.onrender.com' }],
+        destination: 'https://velorhouse.in/:path*',
+        permanent: true,
+      },
     ];
   },
 };

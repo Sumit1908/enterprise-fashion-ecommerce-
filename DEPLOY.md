@@ -69,7 +69,8 @@ automatically — you don't touch them.
 
 ### C. First deploy
 Render builds and starts all 3 services (~5–10 min the first time). When they go
-green, open **`https://slay-jeans-web.onrender.com`**.
+green, open **`https://velorhouse.in`** (or the `slay-jeans-web.onrender.com` URL,
+which redirects there).
 
 > If the homepage says "Storefront is warming up", the API just hadn't finished
 > starting. Wait ~30 seconds and refresh.
@@ -103,11 +104,12 @@ globally. If that happens:
    visitor then waits ~50s). Before real launch, in `render.yaml` change
    `plan: free` → `plan: starter` for `slay-jeans-api` and `slay-jeans-web`
    (≈ $7/month each), commit, push. `slay-jeans-admin` can stay free.
-5. **Custom domain** (optional): each service → **Settings → Custom Domains**.
-   Point `www.yourdomain.com` at `slay-jeans-web`, `admin.yourdomain.com` at
-   `slay-jeans-admin`, `api.yourdomain.com` at `slay-jeans-api`, then update the
-   `*_URL` / `CORS_ALLOWED_ORIGINS` / `NEXT_PUBLIC_API_URL` env vars to the new
-   domains and redeploy web + admin.
+5. **Custom domain** — live on **https://velorhouse.in** (apex + `www`, `www`
+   redirects to the apex via Render). `WEB_URL` and `CORS_ALLOWED_ORIGINS` already
+   point at it. The Next.js config 308-redirects the Render default hostname
+   `slay-jeans-web.onrender.com/*` → `https://velorhouse.in/*` (path + query
+   preserved) so velorhouse.in is the single canonical URL. To add another custom
+   domain: service → **Settings → Custom Domains**, then update the same env vars.
 
 ---
 

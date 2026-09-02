@@ -46,8 +46,8 @@ services:
         generateValue: true
       - key: API_URL
         value: https://slay-jeans-api.onrender.com
-      - key: WEB_URL
-        value: https://slay-jeans-web.onrender.com
+      - key: WEB_URL # canonical public storefront domain (used in email links)
+        value: https://velorhouse.in
       - key: ADMIN_URL
         value: https://slay-jeans-admin.onrender.com
       - key: CORS_ALLOWED_ORIGINS
@@ -98,8 +98,8 @@ services:
         value: "1"
       - key: NEXT_PUBLIC_API_URL # baked in at build time
         value: https://slay-jeans-api.onrender.com
-      - key: WEB_URL
-        value: https://slay-jeans-web.onrender.com
+      - key: WEB_URL # canonical public domain (SEO / sitemap / OG / email links)
+        value: https://velorhouse.in
 
   # --------------------------------------------------------------- Admin (Next.js)
   - type: web
