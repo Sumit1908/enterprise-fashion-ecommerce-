@@ -9,7 +9,13 @@ import { useMsg91Otp } from '@/lib/msg91-widget';
 
 export default function AccountPage() {
   return (
-    <Suspense fallback={<div className="container-wide py-20 text-center text-sm text-[var(--color-ink-soft)]">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="container-wide py-24 text-center text-sm text-[var(--color-ink-soft)]">
+          Loading…
+        </div>
+      }
+    >
       <AccountInner />
     </Suspense>
   );
@@ -29,6 +35,21 @@ function prettyPhone(tenDigits: string): string {
   return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
 }
 
+/* -------------------------------------------------------------------------- */
+
+function AuthShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto flex min-h-[68vh] w-full max-w-md flex-col justify-center px-5 py-12 sm:py-16">
+      <div className="rounded-2xl border border-[var(--color-sand)] bg-[var(--color-paper)] px-6 py-9 shadow-[0_2px_50px_-20px_rgba(25,21,18,0.25)] sm:px-9 sm:py-11">
+        <p className="text-center font-display text-lg uppercase tracking-[0.3em] text-[var(--color-ink)]">
+          Velor&nbsp;House
+        </p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function AccountInner() {
   const { user, ready, requestOtp, verifyOtp, verifyWidgetOtp, logout } = useAuth();
   const widget = useMsg91Otp();
@@ -40,15 +61,12 @@ function AccountInner() {
   // still works. `widgetActive` = the widget is our transport for the NEXT send.
   const [widgetFailed, setWidgetFailed] = useState(false);
   const widgetActive = widget.enabled && !widget.initError && !widgetFailed;
-  // What the phone step should promise (the widget's length is 4 or 6).
-  const predictedLen = widgetActive ? widget.otpLength : SMS_OTP_LENGTH;
 
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   // Locked in once an OTP is actually sent, so the code screen never shifts.
   const [transport, setTransport] = useState<'widget' | 'sms'>('sms');
   const [codeLen, setCodeLen] = useState(SMS_OTP_LENGTH);
   const [mobile, setMobile] = useState('');
-  const [firstName, setFirstName] = useState('');
   const [digits, setDigits] = useState<string[]>(Array(SMS_OTP_LENGTH).fill(''));
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -159,12 +177,11 @@ function AccountInner() {
       setError(null);
       setBusy(true);
       try {
-        const name = firstName.trim() || undefined;
         if (transport === 'widget') {
           const token = await widget.verifyOtp(code);
-          await verifyWidgetOtp(`+91${mobile}`, token, name);
+          await verifyWidgetOtp(`+91${mobile}`, token);
         } else {
-          await verifyOtp(`+91${mobile}`, code, name);
+          await verifyOtp(`+91${mobile}`, code);
         }
         router.push(nextParam || '/account');
       } catch (err) {
@@ -182,7 +199,7 @@ function AccountInner() {
         submittingRef.current = false;
       }
     },
-    [mobile, firstName, codeLen, transport, widget, verifyOtp, verifyWidgetOtp, router, nextParam],
+    [mobile, codeLen, transport, widget, verifyOtp, verifyWidgetOtp, router, nextParam],
   );
 
   function setDigit(index: number, value: string) {
@@ -216,9 +233,13 @@ function AccountInner() {
     if (e.key === 'ArrowRight' && index < codeLen - 1) boxRefs.current[index + 1]?.focus();
   }
 
+  /* --------------------------------------------------------------- render */
+
   if (!ready) {
     return (
-      <div className="container-wide py-20 text-center text-sm text-[var(--color-ink-soft)]">Loading…</div>
+      <div className="container-wide py-24 text-center text-sm text-[var(--color-ink-soft)]">
+        Loading…
+      </div>
     );
   }
 
@@ -234,15 +255,15 @@ function AccountInner() {
         </p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <Link href="/account/orders" className="border border-[var(--color-sand)] bg-[var(--color-paper)] p-5 text-sm hover:border-[var(--color-ink)]">
+          <Link href="/account/orders" className="rounded-xl border border-[var(--color-sand)] bg-[var(--color-paper)] p-5 text-sm hover:border-[var(--color-ink)]">
             <span className="font-semibold">Orders</span>
             <span className="mt-1 block text-xs text-[var(--color-ink-soft)]">Track & review</span>
           </Link>
-          <Link href="/wishlist" className="border border-[var(--color-sand)] bg-[var(--color-paper)] p-5 text-sm hover:border-[var(--color-ink)]">
+          <Link href="/wishlist" className="rounded-xl border border-[var(--color-sand)] bg-[var(--color-paper)] p-5 text-sm hover:border-[var(--color-ink)]">
             <span className="font-semibold">Wishlist</span>
             <span className="mt-1 block text-xs text-[var(--color-ink-soft)]">Saved pieces</span>
           </Link>
-          <div className="border border-[var(--color-sand)] bg-[var(--color-paper)] p-5 text-sm">
+          <div className="rounded-xl border border-[var(--color-sand)] bg-[var(--color-paper)] p-5 text-sm">
             <span className="font-semibold">{user.loyaltyPoints}</span>
             <span className="mt-1 block text-xs text-[var(--color-ink-soft)]">Loyalty points</span>
           </div>
@@ -262,68 +283,64 @@ function AccountInner() {
 
   if (step === 'phone') {
     return (
-      <div className="container-wide max-w-md py-14">
-        <p className="eyebrow">Welcome to Velor House</p>
-        <h1 className="mt-3 font-display text-3xl sm:text-4xl">Enter your mobile number</h1>
-        <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-          We&rsquo;ll send you a {predictedLen}-digit code to sign in. No password needed.
+      <AuthShell>
+        <h1 className="mt-7 text-center font-display text-2xl sm:text-[1.7rem]">
+          Welcome to Velor House
+        </h1>
+        <p className="mt-2 text-center text-sm text-[var(--color-ink-soft)]">
+          Enter your mobile number to continue
         </p>
 
-        <form onSubmit={submitPhone} className="mt-8 space-y-4">
-          <label className="block">
-            <span className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--color-ink-soft)]">First name (optional)</span>
+        <form onSubmit={submitPhone} className="mt-8">
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] transition focus-within:border-[var(--color-ink)] focus-within:ring-1 focus-within:ring-[var(--color-ink)]">
+            <span className="flex select-none items-center border-r border-[var(--color-line)] bg-[var(--color-bone)] px-4 text-sm font-medium text-[var(--color-ink-soft)]">
+              +91
+            </span>
             <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              autoComplete="given-name"
-              className="mt-1.5 w-full border border-[var(--color-sand)] bg-[var(--color-paper)] px-3.5 py-2.5 text-sm focus:border-[var(--color-ink)] focus:outline-none"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              autoFocus
+              aria-label="Mobile number"
+              placeholder="98765 43210"
+              value={mobile.replace(/(\d{5})(\d+)/, '$1 $2')}
+              onChange={(e) => setMobile(cleanMobile(e.target.value))}
+              className="w-full bg-transparent px-4 py-3.5 text-base tracking-[0.06em] outline-none placeholder:text-[var(--color-ink-mute)]"
             />
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--color-ink-soft)]">Mobile number</span>
-            <div className="mt-1.5 flex items-stretch border border-[var(--color-sand)] bg-[var(--color-paper)] focus-within:border-[var(--color-ink)]">
-              <span className="flex items-center border-r border-[var(--color-sand)] px-3.5 text-sm text-[var(--color-ink-soft)]">+91</span>
-              <input
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel-national"
-                autoFocus
-                placeholder="98765 43210"
-                value={mobile.replace(/(\d{5})(\d+)/, '$1 $2')}
-                onChange={(e) => setMobile(cleanMobile(e.target.value))}
-                className="w-full bg-transparent px-3.5 py-2.5 text-sm tracking-[0.08em] focus:outline-none"
-              />
-            </div>
-          </label>
-
-          {error && <p className="text-sm text-[var(--color-sale)]">{error}</p>}
+          {error && <p className="mt-3 text-sm text-[var(--color-sale)]">{error}</p>}
 
           <button
             type="submit"
-            disabled={busy || preparing}
-            className="btn btn-primary w-full disabled:opacity-50"
+            disabled={busy || preparing || mobile.length !== 10}
+            className="btn btn-primary mt-4 w-full disabled:opacity-40"
           >
-            {busy ? 'Sending…' : preparing ? 'Preparing…' : 'Send OTP'}
+            {busy ? 'Sending…' : preparing ? 'Preparing…' : 'Continue'}
           </button>
         </form>
 
-        <p className="mt-6 text-xs text-[var(--color-ink-mute)]">
-          Prefer not to sign in? You can still{' '}
-          <Link href="/account/orders" className="link-underline">track an order</Link> with your
-          order number and email.
+        <p className="mt-5 text-center text-[0.7rem] leading-relaxed text-[var(--color-ink-mute)]">
+          By continuing you agree to our{' '}
+          <Link href="/pages/terms" className="link-underline">Terms</Link> &amp;{' '}
+          <Link href="/pages/privacy" className="link-underline">Privacy Policy</Link>.
         </p>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="container-wide max-w-md py-14">
-      <p className="eyebrow">Verify your mobile number</p>
-      <h1 className="mt-3 font-display text-3xl sm:text-4xl">Enter the OTP</h1>
-      <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
-        We&rsquo;ve sent a {codeLen}-digit OTP to{' '}
-        <span className="font-medium text-[var(--color-ink)]">{prettyPhone(mobile)}</span>.{' '}
+    <AuthShell>
+      <h1 className="mt-7 text-center font-display text-2xl sm:text-[1.7rem]">
+        Verify your mobile number
+      </h1>
+      <p className="mt-2 text-center text-sm text-[var(--color-ink-soft)]">
+        Enter the {codeLen}-digit OTP sent to{' '}
+        <span className="whitespace-nowrap font-medium text-[var(--color-ink)]">
+          {prettyPhone(mobile)}
+        </span>
+      </p>
+      <div className="mt-1 text-center">
         <button
           type="button"
           onClick={() => {
@@ -331,11 +348,11 @@ function AccountInner() {
             setError(null);
             setNotice(null);
           }}
-          className="link-underline font-semibold text-[var(--color-ink)]"
+          className="link-underline text-xs font-semibold text-[var(--color-ink)]"
         >
-          Change
+          Change mobile number
         </button>
-      </p>
+      </div>
 
       <form
         onSubmit={(e) => {
@@ -343,10 +360,10 @@ function AccountInner() {
           const code = digits.join('');
           if (code.length === codeLen) void submitOtp(code);
         }}
-        className="mt-8 space-y-5"
+        className="mt-8"
       >
         <div
-          className={`flex gap-2 sm:gap-3 ${codeLen <= 4 ? 'mx-auto max-w-[16rem]' : ''}`}
+          className={`mx-auto flex gap-2.5 sm:gap-3 ${codeLen <= 4 ? 'max-w-[15rem]' : 'max-w-[20rem]'}`}
           role="group"
           aria-label="One-time passcode"
         >
@@ -364,25 +381,27 @@ function AccountInner() {
               onChange={(e) => setDigit(i, e.target.value)}
               onKeyDown={(e) => onOtpKeyDown(i, e)}
               aria-label={`Digit ${i + 1}`}
-              className="h-12 w-full min-w-0 border border-[var(--color-sand)] bg-[var(--color-paper)] text-center font-display text-xl focus:border-[var(--color-ink)] focus:outline-none sm:h-14"
+              className="h-[3.25rem] w-full min-w-0 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] text-center font-display text-xl outline-none transition focus:border-[var(--color-ink)] focus:ring-1 focus:ring-[var(--color-ink)] sm:h-14"
             />
           ))}
         </div>
 
-        {notice && !error && <p className="text-sm text-[var(--color-ink-soft)]">{notice}</p>}
-        {error && <p className="text-sm text-[var(--color-sale)]">{error}</p>}
+        {notice && !error && (
+          <p className="mt-4 text-center text-sm text-[var(--color-ink-soft)]">{notice}</p>
+        )}
+        {error && <p className="mt-4 text-center text-sm text-[var(--color-sale)]">{error}</p>}
 
         <button
           type="submit"
           disabled={busy || digits.join('').length !== codeLen}
-          className="btn btn-primary w-full disabled:opacity-50"
+          className="btn btn-primary mt-5 w-full disabled:opacity-40"
         >
           {busy ? 'Verifying…' : 'Verify & Continue'}
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-[var(--color-ink-soft)]">
-        Didn&rsquo;t receive the OTP?{' '}
+      <p className="mt-5 text-center text-sm text-[var(--color-ink-soft)]">
+        Didn&rsquo;t get it?{' '}
         {resendIn > 0 ? (
           <span className="text-[var(--color-ink-mute)]">Resend OTP in {resendIn}s</span>
         ) : (
@@ -396,6 +415,6 @@ function AccountInner() {
           </button>
         )}
       </p>
-    </div>
+    </AuthShell>
   );
 }
