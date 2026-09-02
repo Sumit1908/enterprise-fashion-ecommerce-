@@ -184,11 +184,15 @@ export class PincodeService {
 
     const submittedCity = canonicalCity(addr.city ?? '');
     const submittedState = canonicalState(addr.state ?? '');
+    // The offline fallback has reliable states but coarser city names, so during
+    // an upstream outage we still enforce the state and only require a city.
     const cityOk =
-      !!submittedCity &&
-      [resolved.city, resolved.district]
-        .map(canonicalCity)
-        .some((c) => c.length > 0 && c === submittedCity);
+      resolved.source === 'fallback'
+        ? submittedCity.length > 0
+        : !!submittedCity &&
+          [resolved.city, resolved.district]
+            .map(canonicalCity)
+            .some((c) => c.length > 0 && c === submittedCity);
     const stateOk =
       !!submittedState && canonicalState(resolved.state) === submittedState;
 
