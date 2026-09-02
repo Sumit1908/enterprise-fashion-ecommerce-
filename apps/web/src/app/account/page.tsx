@@ -32,9 +32,14 @@ function prettyPhone(tenDigits: string): string {
 function AccountInner() {
   const { user, ready, requestOtp, verifyOtp, verifyWidgetOtp, logout } = useAuth();
   const widget = useMsg91Otp();
-  const useWidget = widget.enabled && !widget.initError;
   const router = useRouter();
   const nextParam = useSearchParams().get('next');
+
+  // If the widget is configured but fails at runtime (e.g. a bad widget id in
+  // the dashboard), we drop to the SMS OTP flow for the rest of the session so
+  // sign-in still works. `useWidget` reflects the *current* transport.
+  const [widgetFailed, setWidgetFailed] = useState(false);
+  const useWidget = widget.enabled && !widget.initError && !widgetFailed;
 
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [mobile, setMobile] = useState('');
@@ -54,6 +59,30 @@ function AccountInner() {
     return () => clearInterval(t);
   }, [resendIn]);
 
+  const advanceToOtpStep = useCallback((isResend: boolean, notice: string | null) => {
+    setResendIn(30);
+    setStep('otp');
+    if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
+    setNotice(notice);
+    setTimeout(() => boxRefs.current[0]?.focus(), 50);
+  }, []);
+
+  const sendViaSms = useCallback(
+    async (isResend: boolean) => {
+      const res = await requestOtp(`+91${mobile}`);
+      advanceToOtpStep(
+        isResend,
+        res.devCode
+          ? `Development mode — your code is ${res.devCode}`
+          : isResend
+            ? 'A new OTP is on its way.'
+            : null,
+      );
+      if (res.resendInSec) setResendIn(res.resendInSec);
+    },
+    [mobile, requestOtp, advanceToOtpStep],
+  );
+
   const sendOtp = useCallback(
     async (isResend: boolean) => {
       setError(null);
@@ -61,26 +90,17 @@ function AccountInner() {
       setBusy(true);
       try {
         if (useWidget) {
-          if (isResend) await widget.retryOtp();
-          else await widget.sendOtp(mobile);
-          setResendIn(30);
-          setStep('otp');
-          if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
-          setNotice(isResend ? 'A new OTP is on its way.' : null);
-        } else {
-          const res = await requestOtp(`+91${mobile}`);
-          setResendIn(res.resendInSec || 30);
-          setStep('otp');
-          if (!isResend) setDigits(Array(OTP_LENGTH).fill(''));
-          setNotice(
-            res.devCode
-              ? `Development mode — your code is ${res.devCode}`
-              : isResend
-                ? 'A new OTP is on its way.'
-                : null,
-          );
+          try {
+            if (isResend) await widget.retryOtp();
+            else await widget.sendOtp(mobile);
+            advanceToOtpStep(isResend, isResend ? 'A new OTP is on its way.' : null);
+            return;
+          } catch {
+            // Widget misconfigured / unreachable — fall through to the SMS flow.
+            setWidgetFailed(true);
+          }
         }
-        setTimeout(() => boxRefs.current[0]?.focus(), 50);
+        await sendViaSms(isResend);
       } catch (err) {
         setError(
           err instanceof ApiError
@@ -93,7 +113,7 @@ function AccountInner() {
         setBusy(false);
       }
     },
-    [mobile, requestOtp, useWidget, widget],
+    [mobile, useWidget, widget, sendViaSms, advanceToOtpStep],
   );
 
   const preparing = !widget.resolved || (useWidget && !widget.ready);

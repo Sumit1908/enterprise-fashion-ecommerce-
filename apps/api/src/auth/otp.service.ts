@@ -128,8 +128,15 @@ export class OtpService {
       expiresInSec: env.OTP_TTL_SEC,
       resendInSec: env.OTP_RESEND_COOLDOWN_SEC,
       delivered: result.delivered,
-      // Only surface the code when there is genuinely no SMS transport (never in prod).
-      devCode: !this.sms.configured && env.NODE_ENV !== 'production' ? code : undefined,
+      // Surface the code to the client ONLY outside production, and only when we
+      // cannot be sure it was actually delivered — so local/QA testing works
+      // when no SMS transport is set up, the provider rejects the send, or the
+      // send path can't confirm delivery.
+      devCode:
+        env.NODE_ENV !== 'production' &&
+        (!this.sms.configured || !result.delivered || !result.verified)
+          ? code
+          : undefined,
     };
   }
 

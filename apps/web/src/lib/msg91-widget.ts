@@ -91,8 +91,36 @@ function extractToken(data: unknown): string | null {
   return null;
 }
 
+/** Wrap a callback-style MSG91 method in a promise that rejects if it stalls. */
+function withTimeout<T>(
+  executor: (resolve: (v: T) => void, reject: (e: Error) => void) => void,
+  ms: number,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      reject(new Error('The OTP service did not respond. Please try again.'));
+    }, ms);
+    const wrap =
+      <U,>(fn: (v: U) => void) =>
+      (v: U) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        fn(v);
+      };
+    executor(wrap(resolve), wrap(reject));
+  });
+}
+
 function errorMessage(data: unknown, fallback: string): string {
   if (typeof data === 'string' && data) return data;
+  if (Array.isArray(data)) {
+    const first = data.find((x) => typeof x === 'string' && x);
+    if (first) return first as string;
+  }
   if (data && typeof data === 'object') {
     const o = data as Record<string, unknown>;
     for (const key of ['message', 'msg', 'error', 'errorMessage']) {
@@ -169,29 +197,29 @@ export function useMsg91Otp(): Msg91Otp {
     if (typeof window.sendOtp !== 'function') throw new Error('OTP service is still loading. Please retry.');
     tokenRef.current = null;
     const identifier = `91${mobile.replace(/\D/g, '').slice(-10)}`;
-    await new Promise<void>((resolve, reject) => {
+    await withTimeout<void>((resolve, reject) => {
       window.sendOtp!(
         identifier,
         () => resolve(),
         (e) => reject(new Error(errorMessage(e, 'Could not send the OTP. Please try again.'))),
       );
-    });
+    }, 20000);
   }, []);
 
   const retryOtp = useCallback(async () => {
     if (typeof window.retryOtp !== 'function') throw new Error('OTP service is still loading. Please retry.');
-    await new Promise<void>((resolve, reject) => {
+    await withTimeout<void>((resolve, reject) => {
       window.retryOtp!(
         null,
         () => resolve(),
         (e) => reject(new Error(errorMessage(e, 'Could not resend the OTP. Please try again.'))),
       );
-    });
+    }, 20000);
   }, []);
 
   const verifyOtp = useCallback(async (code: string) => {
     if (typeof window.verifyOtp !== 'function') throw new Error('OTP service is still loading. Please retry.');
-    return new Promise<string>((resolve, reject) => {
+    return withTimeout<string>((resolve, reject) => {
       window.verifyOtp!(
         code.replace(/\D/g, ''),
         (data) => {
@@ -201,7 +229,7 @@ export function useMsg91Otp(): Msg91Otp {
         },
         (e) => reject(new Error(errorMessage(e, 'That code is incorrect or expired.'))),
       );
-    });
+    }, 20000);
   }, []);
 
   return useMemo(
