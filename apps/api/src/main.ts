@@ -72,6 +72,21 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`API ready on ${env.API_URL}  (docs at ${env.API_URL}/api/docs)`);
+
+  // Keep the instance warm on Render's free tier. Without this the service spins
+  // down after ~15 min idle and a cold start takes 30-60s — long enough that an
+  // inbound webhook validation (Shiprocket, Razorpay) times out on the caller's
+  // side ("unable to send request to mentioned api"). A periodic self-request to
+  // the public URL counts as inbound traffic and resets the idle timer.
+  // Disable with KEEP_WARM=false (e.g. once on a paid always-on plan).
+  if (env.NODE_ENV === 'production' && process.env.KEEP_WARM !== 'false') {
+    const pingUrl = `${env.API_URL.replace(/\/$/, '')}/api/v1/health`;
+    const everyMs = Math.max(60_000, Number(process.env.KEEP_WARM_INTERVAL_SEC || 600) * 1000);
+    const timer = setInterval(() => {
+      fetch(pingUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
+    }, everyMs);
+    timer.unref?.();
+  }
 }
 
 void bootstrap();
