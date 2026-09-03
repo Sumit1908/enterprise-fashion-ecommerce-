@@ -26,10 +26,12 @@ services:
       pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter @slay/config build &&
       pnpm --filter @slay/db build &&
+      pnpm --filter @slay/db exec prisma migrate deploy &&
       pnpm --filter @slay/api build
-    # Applies any pending Prisma migrations against the production DB after the
-    # build succeeds and before the new version goes live. Safe & idempotent.
-    preDeployCommand: pnpm --filter @slay/db exec prisma migrate deploy
+    # NOTE: `prisma migrate deploy` runs inside buildCommand (not preDeployCommand)
+    # because Render pre-deploy commands are not available on the free instance
+    # type. It only applies *pending* migrations and is idempotent; a failure
+    # fails the build and leaves the current version running.
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
