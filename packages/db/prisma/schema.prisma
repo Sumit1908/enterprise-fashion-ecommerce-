@@ -1103,12 +1103,29 @@ model Shipment {
   courierName    String?
   trackingUrl    String?
   status         ShipmentStatus @default(LABEL_CREATED)
+  // Provider's own status label, verbatim (e.g. "PICKUP SCHEDULED", "CANCELED",
+  // "RTO DELIVERED"). Shown in the UI when it is more specific than `status`.
+  rawStatus      String?
   labelUrl       String?
   manifestUrl    String?
+  invoiceUrl     String?
   estimatedDelivery DateTime?
   shippedAt      DateTime?
   deliveredAt    DateTime?
+  cancelledAt    DateTime?
   weightGrams    Int?
+
+  // --- Shiprocket identifiers / metadata -----------------------------------
+  providerOrderId    String? // Shiprocket order_id
+  providerShipmentId String? // Shiprocket shipment_id
+  courierId          Int?    // Shiprocket courier_company_id
+  pickupLocation     String? // pickup nickname used
+  pickupScheduledAt  DateTime?
+  pickupTokenNumber  String?
+  freightCharge      Decimal? @db.Decimal(12, 2)
+  appliedWeightGrams Int?
+  lastSyncedAt       DateTime?
+
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -1116,6 +1133,7 @@ model Shipment {
 
   @@index([orderId])
   @@index([awbNumber])
+  @@index([providerShipmentId])
 }
 
 model ShipmentEvent {

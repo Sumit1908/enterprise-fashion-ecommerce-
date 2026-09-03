@@ -79,8 +79,28 @@ export const envSchema = z.object({
   PAYU_MERCHANT_KEY: z.string().optional(),
   PAYU_MERCHANT_SALT: z.string().optional(),
 
-  SHIPROCKET_EMAIL: z.string().optional(),
-  SHIPROCKET_PASSWORD: z.string().optional(),
+  // Shiprocket — courier aggregator. EMAIL/PASSWORD belong to a Shiprocket
+  // "API user" (Settings -> API -> Configure). All other keys have safe defaults.
+  SHIPROCKET_EMAIL: trimmedOptional,
+  SHIPROCKET_PASSWORD: trimmedOptional,
+  SHIPROCKET_BASE_URL: z.string().url().default('https://apiv2.shiprocket.in/v1/external'),
+  // Nickname of a *verified* pickup location in the Shiprocket panel
+  // (Settings -> Company -> Pickup Addresses). Required for order creation.
+  SHIPROCKET_PICKUP_LOCATION: trimmedOptional,
+  SHIPROCKET_CHANNEL_ID: trimmedOptional,
+  // Shared secret configured on the Shiprocket webhook (sent as the `x-api-key`
+  // header). The webhook is rejected unless it matches.
+  SHIPROCKET_WEBHOOK_TOKEN: trimmedOptional,
+  // Push a shipment to Shiprocket automatically when an order is confirmed.
+  SHIPROCKET_AUTO_CREATE: bool.default('true'),
+  // Automatically assign an AWB (recommended courier) right after order creation.
+  SHIPROCKET_AUTO_ASSIGN_AWB: bool.default('true'),
+  // Fallback parcel dimensions/weight when a product has no weight set.
+  SHIPROCKET_DEFAULT_WEIGHT_KG: z.coerce.number().positive().default(0.5),
+  SHIPROCKET_DEFAULT_LENGTH_CM: z.coerce.number().positive().default(25),
+  SHIPROCKET_DEFAULT_BREADTH_CM: z.coerce.number().positive().default(20),
+  SHIPROCKET_DEFAULT_HEIGHT_CM: z.coerce.number().positive().default(5),
+
   DELHIVERY_API_TOKEN: z.string().optional(),
   BLUEDART_LICENSE_KEY: z.string().optional(),
 

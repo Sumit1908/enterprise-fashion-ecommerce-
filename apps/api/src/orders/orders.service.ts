@@ -13,6 +13,7 @@ import { PricingService } from '../pricing/pricing.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
 import { EmailService } from '../email/email.service.js';
 import { PincodeService } from '../geo/pincode.service.js';
+import { ShippingService } from '../shipping/shipping.service.js';
 import { BRAND } from '../common/brand.js';
 import type { PaymentInitResult } from '../payments/payment-provider.js';
 import { money, round2, toNumber } from '../common/money.js';
@@ -43,6 +44,7 @@ export class OrdersService {
     private readonly payments: PaymentsService,
     private readonly email: EmailService,
     private readonly pincode: PincodeService,
+    private readonly shipping: ShippingService,
   ) {}
 
   /* ------------------------------------------------------------- placement */
@@ -384,6 +386,12 @@ export class OrdersService {
     }, { timeout: 20_000 });
 
     this.logger.log(`Order ${order.orderNumber} finalised (${details.source})`);
+
+    // Hand the confirmed order to Shiprocket — best-effort, never blocks or
+    // fails the order. No-op unless Shiprocket is configured + auto-create is on.
+    void this.shipping
+      .autoCreateForOrder(order.id)
+      .catch((e) => this.logger.warn(`Shiprocket auto-create skipped: ${(e as Error).message}`));
 
     // Order confirmation email — best-effort, never blocks the order.
     const to = payment.order.user?.email ?? payment.order.guestEmail;
@@ -875,18 +883,24 @@ export function publicOrder(order: OrderWithRelations) {
       note: e.note,
       at: e.createdAt,
     })),
-    shipments: order.shipments.map((s) => ({
-      provider: s.provider,
-      awbNumber: s.awbNumber,
-      status: s.status,
-      trackingUrl: s.trackingUrl,
-      estimatedDelivery: s.estimatedDelivery,
-      events: s.trackingEvents.map((t) => ({
-        status: t.status,
-        message: t.message,
-        location: t.location,
-        at: t.occurredAt,
+    shipments: order.shipments
+      .filter((s) => !s.cancelledAt)
+      .map((s) => ({
+        provider: s.provider,
+        awbNumber: s.awbNumber,
+        courierName: s.courierName,
+        status: s.status,
+        rawStatus: s.rawStatus,
+        trackingUrl: s.trackingUrl,
+        estimatedDelivery: s.estimatedDelivery,
+        shippedAt: s.shippedAt,
+        deliveredAt: s.deliveredAt,
+        events: s.trackingEvents.map((t) => ({
+          status: t.status,
+          message: t.message,
+          location: t.location,
+          at: t.occurredAt,
+        })),
       })),
-    })),
   };
 }
