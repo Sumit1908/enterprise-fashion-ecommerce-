@@ -159,7 +159,9 @@ async function seedRbac() {
 
 async function seedSuperAdmin() {
   const email = process.env.SEED_ADMIN_EMAIL ?? 'sumitaastha@velorhouse.in';
-  const password = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!2026';
+  // Explicit password rotates an existing admin; on first create we fall back.
+  const explicitPassword = process.env.SEED_ADMIN_PASSWORD;
+  const password = explicitPassword ?? 'ChangeMe!2026';
   const user = await prisma.user.upsert({
     where: { email },
     create: {
@@ -173,7 +175,13 @@ async function seedSuperAdmin() {
       passwordHash: hashPassword(password),
       emailVerifiedAt: new Date(),
     },
-    update: { isSuperAdmin: true, kind: 'STAFF' },
+    update: {
+      isSuperAdmin: true,
+      kind: 'STAFF',
+      status: 'ACTIVE',
+      // Only reset the password when SEED_ADMIN_PASSWORD is explicitly provided.
+      ...(explicitPassword ? { passwordHash: hashPassword(explicitPassword) } : {}),
+    },
   });
   const adminRole = await prisma.role.findUnique({ where: { slug: 'admin' } });
   if (adminRole) {
@@ -183,7 +191,10 @@ async function seedSuperAdmin() {
       update: {},
     });
   }
-  console.log(`  Super admin: ${email}  (password: ${password})`);
+  console.log(
+    `  Super admin: ${email}` +
+      (explicitPassword ? '  (password set from SEED_ADMIN_PASSWORD)' : '  (password unchanged)'),
+  );
 }
 
 const U = (id: string, w = 900) =>
