@@ -55,6 +55,13 @@ export const envSchema = z.object({
   // Local disk fallback used when S3 is not configured (dev only).
   MEDIA_UPLOAD_DIR: z.string().default('uploads'),
   MEDIA_MAX_MB: z.coerce.number().default(15),
+  // Product videos are opt-in (the schema supports them; storefront shows images).
+  MEDIA_ALLOW_VIDEO: bool.default('false'),
+
+  // Optional: AI product-attribute suggestions from a product image (Anthropic
+  // Claude vision). No key -> the admin "Suggest with AI" button is hidden.
+  ANTHROPIC_API_KEY: trimmedOptional,
+  AI_SUGGEST_MODEL: z.string().default('claude-3-5-haiku-latest'),
 
   // Product search backend. 'postgres' works with no extra infra;
   // 'elasticsearch' requires a reachable ELASTICSEARCH_NODE.

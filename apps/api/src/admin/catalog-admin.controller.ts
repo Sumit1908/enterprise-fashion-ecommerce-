@@ -16,7 +16,9 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/permissions.guard.js';
 import { RequirePermissions } from '../common/decorators.js';
 import { AuditInterceptor } from '../common/audit.interceptor.js';
+import { IsString, MaxLength } from 'class-validator';
 import { CatalogAdminService } from './catalog-admin.service.js';
+import { AiSuggestService } from './ai-suggest.service.js';
 import {
   BrandUpsertDto,
   BulkProductActionDto,
@@ -29,13 +31,35 @@ import {
   ReorderDto,
 } from './dto.js';
 
+class AiSuggestDto {
+  @IsString() @MaxLength(2048) imageUrl!: string;
+}
+
 @ApiTags('admin-catalog')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @UseInterceptors(AuditInterceptor)
 @Controller('admin')
 export class CatalogAdminController {
-  constructor(private readonly service: CatalogAdminService) {}
+  constructor(
+    private readonly service: CatalogAdminService,
+    private readonly ai: AiSuggestService,
+  ) {}
+
+  /* -------------------------------------------------------- AI suggestions */
+
+  @Get('products/ai-suggest/config')
+  @RequirePermissions('product:read')
+  aiConfig() {
+    return { available: this.ai.available };
+  }
+
+  /** Advisory product attributes from a product image. Suggestions only. */
+  @Post('products/ai-suggest')
+  @RequirePermissions('product:update')
+  aiSuggest(@Body() dto: AiSuggestDto) {
+    return this.ai.suggestFromImageUrl(dto.imageUrl);
+  }
 
   /* -------------------------------------------------------------- products */
 

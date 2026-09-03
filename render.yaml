@@ -62,6 +62,31 @@ services:
         sync: false
       - key: SMTP_PASSWORD
         sync: false
+      # Product-image storage — Supabase Storage (S3-compatible), permanent,
+      # survives every deploy/restart. Create a free Supabase project, a PUBLIC
+      # bucket named "product-media", then Storage -> S3 Connection -> new key.
+      #   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY -> the S3 access key pair
+      #   S3_ENDPOINT -> https://<project-ref>.supabase.co/storage/v1/s3
+      # Without these the API falls back to the local disk (NOT persistent).
+      - key: S3_BUCKET
+        value: product-media
+      - key: S3_FORCE_PATH_STYLE
+        value: "true"
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PUBLIC_BASE_URL # optional override — leave unset for Supabase
+        sync: false
+      - key: MEDIA_MAX_MB
+        value: "15"
+      - key: MEDIA_ALLOW_VIDEO
+        value: "false"
+      # Optional AI product-attribute suggestions (Anthropic Claude vision).
+      - key: ANTHROPIC_API_KEY
+        sync: false
       # Razorpay live payments — add the real values in the Render dashboard,
       # never in Git. Without these, checkout stays Cash-on-Delivery only.
       #   KEY_ID / KEY_SECRET  -> Razorpay Dashboard > Settings > API Keys

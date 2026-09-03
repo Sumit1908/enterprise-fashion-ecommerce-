@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   UploadedFile,
@@ -10,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { loadEnv } from '@slay/config';
 import { JwtAuthGuard } from '../common/jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/permissions.guard.js';
@@ -23,6 +24,10 @@ class PresignDto {
   @IsString() filename!: string;
   @IsString() contentType!: string;
   @IsOptional() @IsIn(['products', 'banners', 'brands', 'blog', 'lookbooks']) folder?: string;
+}
+
+class DeleteMediaDto {
+  @IsString() @MaxLength(2048) url!: string;
 }
 
 @ApiTags('admin-media')
@@ -56,5 +61,12 @@ export class MediaController {
   @RequirePermissions('product:update')
   presign(@Body() dto: PresignDto) {
     return this.media.presignUpload(dto);
+  }
+
+  /** Remove an object this API stored — used when an admin deletes an image. */
+  @Delete()
+  @RequirePermissions('product:update')
+  remove(@Body() dto: DeleteMediaDto) {
+    return this.media.delete(dto.url);
   }
 }

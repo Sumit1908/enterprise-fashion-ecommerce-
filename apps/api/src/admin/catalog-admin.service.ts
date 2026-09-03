@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { slugify, uniqueSlug } from '../common/slug.js';
 import { parseCsvRecords, toCsv } from '../common/csv.js';
 import { SearchService } from '../search/search.service.js';
+import { MediaService } from '../media/media.service.js';
 import type {
   BrandUpsertDto,
   BulkProductActionDto,
@@ -47,6 +48,14 @@ function splitList(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
+/** Pipe-delimited image URL list from the CSV `image_urls` column. */
+function parseImageUrls(raw: string | undefined): string[] {
+  return (raw ?? '')
+    .split('|')
+    .map((s) => s.trim())
+    .filter((s) => /^https?:\/\/\S+$/i.test(s));
+}
+
 const PRODUCT_DETAIL_INCLUDE = {
   brand: { select: { id: true, name: true } },
   categories: { select: { categoryId: true, isPrimary: true } },
@@ -69,7 +78,16 @@ export class CatalogAdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly search: SearchService,
+    private readonly media: MediaService,
   ) {}
+
+  /** Fire-and-forget removal of bucket objects no longer referenced by a product. */
+  private cleanupRemovedMedia(oldUrls: string[], newUrls: string[]): void {
+    const keep = new Set(newUrls);
+    for (const url of oldUrls) {
+      if (!keep.has(url)) void this.media.delete(url).catch(() => undefined);
+    }
+  }
 
   /** Fire-and-forget search index update — never blocks or fails the request. */
   private reindex(id: string): void {
@@ -361,6 +379,10 @@ export class CatalogAdminService {
     }
 
     if (dto.media) {
+      const previous = await this.prisma.productMedia.findMany({
+        where: { productId },
+        select: { url: true },
+      });
       await this.prisma.productMedia.deleteMany({ where: { productId } });
       if (dto.media.length) {
         await this.prisma.productMedia.createMany({
@@ -373,6 +395,10 @@ export class CatalogAdminService {
           })),
         });
       }
+      this.cleanupRemovedMedia(
+        previous.map((p) => p.url),
+        dto.media.map((m) => m.url),
+      );
     }
 
     if (dto.options || dto.variants) {
@@ -764,6 +790,8 @@ export class CatalogAdminService {
     'sku',
     'stock',
     'shortDescription',
+    // Permanent product image URLs, pipe-delimited: URL1|URL2|URL3
+    'image_urls',
   ];
 
   async exportProductsCsv(): Promise<string> {
@@ -775,6 +803,11 @@ export class CatalogAdminService {
         categories: { select: { category: { select: { slug: true } } } },
         tags: { select: { tag: { select: { name: true } } } },
         options: { select: { name: true } },
+        media: {
+          where: { type: 'IMAGE' },
+          orderBy: { position: 'asc' },
+          select: { url: true },
+        },
         variants: {
           include: {
             optionValues: { select: { optionValue: { select: { value: true } } } },
@@ -800,6 +833,7 @@ export class CatalogAdminService {
         tags: p.tags.map((t) => t.tag.name).join('|'),
         option: p.options[0]?.name ?? '',
         shortDescription: p.shortDescription ?? '',
+        image_urls: p.media.map((m) => m.url).join('|'),
       };
       if (p.variants.length === 0) {
         rows.push({ ...shared, optionValue: '', sku: '', stock: '' });
@@ -910,6 +944,30 @@ export class CatalogAdminService {
           await this.prisma.productTag.create({
             data: { productId: product.id, tagId: tag.id },
           });
+        }
+
+        // image URLs — only rebuild media when the column is present in the CSV,
+        // so a partial import can't wipe images it didn't intend to touch.
+        if (Object.prototype.hasOwnProperty.call(first, 'image_urls')) {
+          const urls = parseImageUrls(first.image_urls);
+          const previous = await this.prisma.productMedia.findMany({
+            where: { productId: product.id, type: 'IMAGE' },
+            select: { url: true },
+          });
+          await this.prisma.productMedia.deleteMany({
+            where: { productId: product.id, type: 'IMAGE' },
+          });
+          if (urls.length) {
+            await this.prisma.productMedia.createMany({
+              data: urls.map((url, i) => ({
+                productId: product.id,
+                url,
+                type: 'IMAGE' as const,
+                position: i,
+              })),
+            });
+          }
+          this.cleanupRemovedMedia(previous.map((p) => p.url), urls);
         }
 
         // options + variants — rebuilt from the CSV rows

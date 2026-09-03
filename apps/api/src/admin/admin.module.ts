@@ -18,6 +18,7 @@ import { RequirePermissions } from '../common/decorators.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CatalogAdminController } from './catalog-admin.controller.js';
 import { CatalogAdminService } from './catalog-admin.service.js';
+import { AiSuggestService } from './ai-suggest.service.js';
 import { InventoryAdminController } from './inventory-admin.controller.js';
 import { InventoryAdminService } from './inventory-admin.service.js';
 import { HomepageAdminController, HomepageAdminService } from './homepage-admin.controller.js';
@@ -262,6 +263,11 @@ class AdminController {
     InventoryAdminController,
     HomepageAdminController,
   ],
-  providers: [CatalogAdminService, InventoryAdminService, HomepageAdminService],
+  providers: [
+    CatalogAdminService,
+    InventoryAdminService,
+    HomepageAdminService,
+    AiSuggestService,
+  ],
 })
 export class AdminModule {}

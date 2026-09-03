@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
+  DeleteObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -11,15 +12,24 @@ import { loadEnv } from '@slay/config';
 
 const env = loadEnv();
 
-const ACCEPTED = new Map<string, string>([
+const IMAGE_TYPES = new Map<string, string>([
   ['image/jpeg', 'jpg'],
+  ['image/jpg', 'jpg'],
   ['image/png', 'png'],
   ['image/webp', 'webp'],
   ['image/avif', 'avif'],
   ['image/gif', 'gif'],
+]);
+const VIDEO_TYPES = new Map<string, string>([
   ['video/mp4', 'mp4'],
   ['video/webm', 'webm'],
 ]);
+
+function acceptedTypes(): Map<string, string> {
+  return env.MEDIA_ALLOW_VIDEO
+    ? new Map([...IMAGE_TYPES, ...VIDEO_TYPES])
+    : IMAGE_TYPES;
+}
 
 export interface UploadedMedia {
   url: string;
@@ -43,7 +53,8 @@ export class MediaService {
       ? new S3Client({
           region: env.AWS_REGION,
           endpoint: env.S3_ENDPOINT,
-          forcePathStyle: env.S3_FORCE_PATH_STYLE,
+          // Supabase / MinIO / R2 need path-style addressing.
+          forcePathStyle: env.S3_FORCE_PATH_STYLE || this.isSupabase(),
           credentials: {
             accessKeyId: env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
@@ -51,21 +62,45 @@ export class MediaService {
         })
       : null;
 
-    this.logger.log(`Media storage driver: ${this.driver}`);
+    this.logger.log(
+      `Media storage driver: ${this.driver}${this.driver === 's3' ? ` (${this.publicBaseUrl()})` : ''}`,
+    );
+    if (this.driver === 'local' && env.NODE_ENV === 'production') {
+      this.logger.warn(
+        'Media is on the LOCAL DISK in production — uploads will NOT survive a redeploy. Configure S3/Supabase storage.',
+      );
+    }
   }
 
   config() {
     return {
       driver: this.driver,
+      persistent: this.driver === 's3',
       maxMb: env.MEDIA_MAX_MB,
-      acceptedTypes: [...ACCEPTED.keys()],
+      allowVideo: env.MEDIA_ALLOW_VIDEO,
+      acceptedTypes: [...acceptedTypes().keys()],
       publicBaseUrl: this.publicBaseUrl(),
     };
   }
 
-  private publicBaseUrl(): string {
+  private isSupabase(): boolean {
+    return /\bsupabase\.(co|in|net)\b/.test(env.S3_ENDPOINT ?? '');
+  }
+
+  /** Supabase S3 endpoint -> its public object URL for the bucket. */
+  private supabasePublicBase(): string | null {
+    const m = (env.S3_ENDPOINT ?? '').match(
+      /^https?:\/\/([a-z0-9-]+)\.(?:storage\.)?supabase\.(?:co|in|net)/i,
+    );
+    if (!m) return null;
+    return `https://${m[1]}.supabase.co/storage/v1/object/public/${env.S3_BUCKET}`;
+  }
+
+  publicBaseUrl(): string {
     if (this.driver === 'local') return `${env.API_URL}/uploads`;
     if (env.S3_PUBLIC_BASE_URL) return env.S3_PUBLIC_BASE_URL.replace(/\/$/, '');
+    const supa = this.supabasePublicBase();
+    if (supa) return supa;
     if (env.S3_ENDPOINT) {
       return `${env.S3_ENDPOINT.replace(/\/$/, '')}/${env.S3_BUCKET}`;
     }
@@ -73,25 +108,27 @@ export class MediaService {
   }
 
   private validate(contentType: string, size: number): string {
-    const ext = ACCEPTED.get(contentType);
+    const ext = acceptedTypes().get(contentType);
     if (!ext) {
       throw new BadRequestException(
-        `Unsupported file type "${contentType}". Allowed: ${[...ACCEPTED.keys()].join(', ')}`,
+        `Unsupported file type "${contentType}". Allowed: ${[...acceptedTypes().keys()].join(', ')}`,
       );
     }
     if (size > env.MEDIA_MAX_MB * 1024 * 1024) {
-      throw new BadRequestException(`File exceeds ${env.MEDIA_MAX_MB} MB limit`);
+      throw new BadRequestException(`File exceeds the ${env.MEDIA_MAX_MB} MB limit`);
     }
     return ext;
   }
 
   private buildKey(folder: string, ext: string): string {
+    const safeFolder = /^[a-z0-9_-]+$/i.test(folder) ? folder : 'products';
     const now = new Date();
     const yyyymm = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
-    return `${folder}/${yyyymm}/${randomUUID()}.${ext}`;
+    // Filename is a random UUID — the client's original name is never trusted.
+    return `${safeFolder}/${yyyymm}/${randomUUID()}.${ext}`;
   }
 
-  /** Store an uploaded file (S3 or local disk) and return its public URL. */
+  /** Store an uploaded file (S3/Supabase or local disk) and return its public URL. */
   async store(
     file: { buffer: Buffer; mimetype: string; size: number; originalname?: string },
     folder = 'products',
@@ -123,6 +160,37 @@ export class MediaService {
     };
   }
 
+  /** Storage key for a URL this service produced (or null if it isn't ours). */
+  keyFromUrl(url: string): string | null {
+    if (!url) return null;
+    const base = `${this.publicBaseUrl()}/`;
+    if (url.startsWith(base)) return decodeURIComponent(url.slice(base.length));
+    // Also accept a bare key.
+    if (/^[a-z0-9_-]+\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.[a-z0-9]+$/i.test(url)) return url;
+    return null;
+  }
+
+  /**
+   * Best-effort delete of an object we own. Used when an admin removes an image
+   * from a product form before/after saving, so the bucket doesn't accumulate
+   * orphans. Never throws — a missing object is fine.
+   */
+  async delete(urlOrKey: string): Promise<{ deleted: boolean; key: string | null }> {
+    const key = this.keyFromUrl(urlOrKey);
+    if (!key) return { deleted: false, key: null };
+    try {
+      if (this.driver === 's3' && this.s3) {
+        await this.s3.send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET, Key: key }));
+      } else {
+        await rm(join(process.cwd(), env.MEDIA_UPLOAD_DIR, key), { force: true });
+      }
+      return { deleted: true, key };
+    } catch (err) {
+      this.logger.warn(`Media delete failed for ${key}: ${(err as Error).message}`);
+      return { deleted: false, key };
+    }
+  }
+
   /**
    * Presigned PUT URL for direct browser -> S3 uploads (skips the API for large
    * files). Only available when the S3 driver is active.
@@ -131,8 +199,9 @@ export class MediaService {
     if (this.driver !== 's3' || !this.s3) {
       throw new BadRequestException('S3 is not configured; use POST /admin/media/upload instead');
     }
-    const ext = ACCEPTED.get(input.contentType) ?? (extname(input.filename).slice(1) || 'bin');
-    if (!ACCEPTED.get(input.contentType)) {
+    const ext =
+      acceptedTypes().get(input.contentType) ?? (extname(input.filename).slice(1) || 'bin');
+    if (!acceptedTypes().get(input.contentType)) {
       throw new BadRequestException(`Unsupported file type "${input.contentType}"`);
     }
     const key = this.buildKey(input.folder ?? 'products', ext);

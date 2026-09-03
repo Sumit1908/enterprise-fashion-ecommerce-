@@ -38,21 +38,56 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   return res.json() as Promise<T>;
 }
 
-/** Upload a file via multipart/form-data to an authenticated endpoint. */
-export async function apiUpload<T>(path: string, file: File, field = 'file'): Promise<T> {
+/**
+ * Upload a file via multipart/form-data to an authenticated endpoint.
+ * `onProgress` (0–100) fires as the bytes leave the browser.
+ */
+export function apiUpload<T>(
+  path: string,
+  file: File,
+  opts: { field?: string; onProgress?: (pct: number) => void; signal?: AbortSignal } = {},
+): Promise<T> {
   const token = getToken();
-  const form = new FormData();
-  form.append(field, file);
-  const res = await fetch(`${API_BASE}/api/v1${path}`, {
-    method: 'POST',
-    headers: token ? { authorization: `Bearer ${token}` } : {},
-    body: form,
+  const { field = 'file', onProgress, signal } = opts;
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/api/v1${path}`);
+    if (token) xhr.setRequestHeader('authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let body: { message?: string } = {};
+      try {
+        body = JSON.parse(xhr.responseText) as { message?: string };
+      } catch {
+        /* non-JSON body */
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body as T);
+      } else if (xhr.status === 401) {
+        clearToken();
+        if (typeof window !== 'undefined') window.location.href = '/login';
+        reject(new Error('Session expired'));
+      } else {
+        reject(new Error(body.message ?? `Upload failed (${xhr.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
+    signal?.addEventListener('abort', () => xhr.abort());
+    const form = new FormData();
+    form.append(field, file);
+    xhr.send(form);
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new Error(body.message ?? `Upload failed (${res.status})`);
-  }
-  return res.json() as Promise<T>;
+}
+
+/** Best-effort DELETE with a JSON body (auth handled by apiFetch). */
+export async function apiDelete(path: string, body?: unknown): Promise<void> {
+  await apiFetch(path, {
+    method: 'DELETE',
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
 }
 
 /** Fetch a file from an authenticated endpoint and trigger a browser download. */

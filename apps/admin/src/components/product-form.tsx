@@ -76,6 +76,10 @@ const EMPTY: ProductFormValue = {
 const parseList = (s: string) =>
   s.split(',').map((x) => x.trim()).filter(Boolean);
 
+/** Image URLs — one per line (a URL may itself contain commas). */
+const parseLines = (s: string) =>
+  s.split('\n').map((x) => x.trim()).filter(Boolean);
+
 const comboKey = (size: string | null, colour: string | null) =>
   [size, colour].filter(Boolean).join('||');
 
@@ -87,6 +91,9 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
   const [collections, setCollections] = useState<Ref[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
   const isEdit = Boolean(v.id);
 
   useEffect(() => {
@@ -95,7 +102,71 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
       .then(setCategories)
       .catch(() => undefined);
     apiFetch<Ref[]>('/admin/collections').then(setCollections).catch(() => undefined);
+    apiFetch<{ available: boolean }>('/admin/products/ai-suggest/config')
+      .then((c) => setAiAvailable(c.available))
+      .catch(() => undefined);
   }, []);
+
+  interface AiSuggestion {
+    name?: string;
+    brand?: string;
+    gender?: string;
+    colour?: string;
+    category?: string;
+    shortDescription?: string;
+    description?: string;
+    tags?: string[];
+    material?: string;
+    style?: string;
+    notes?: string;
+  }
+
+  async function runAiSuggest() {
+    const imageUrl = parseLines(v.mediaText)[0];
+    if (!imageUrl) {
+      setAiNote('Upload a product image first.');
+      return;
+    }
+    setAiBusy(true);
+    setAiNote(null);
+    try {
+      const { suggestions } = await apiFetch<{ suggestions: AiSuggestion; disclaimer: string }>(
+        '/admin/products/ai-suggest',
+        { method: 'POST', body: JSON.stringify({ imageUrl }) },
+      );
+      // Fill only blank fields — never overwrite what the editor already typed.
+      setV((p) => {
+        const next = { ...p };
+        if (!next.name && suggestions.name) next.name = suggestions.name;
+        if (!next.shortDescription && suggestions.shortDescription)
+          next.shortDescription = suggestions.shortDescription;
+        if (!next.description && suggestions.description) next.description = suggestions.description;
+        if (!next.gender && suggestions.gender) next.gender = suggestions.gender;
+        if (!next.fabricDetails && suggestions.material) next.fabricDetails = suggestions.material;
+        if (!next.tags && suggestions.tags?.length) next.tags = suggestions.tags.join(', ');
+        const brandMatch = suggestions.brand
+          ? brands.find((b) => b.name.toLowerCase() === suggestions.brand!.toLowerCase())
+          : undefined;
+        if (!next.brandId && brandMatch) next.brandId = brandMatch.id;
+        return next;
+      });
+      const extra: string[] = [];
+      if (suggestions.colour) extra.push(`colour: ${suggestions.colour}`);
+      if (suggestions.category) extra.push(`category: ${suggestions.category}`);
+      if (suggestions.style) extra.push(`style: ${suggestions.style}`);
+      if (suggestions.brand && !brands.some((b) => b.name.toLowerCase() === suggestions.brand!.toLowerCase()))
+        extra.push(`brand seen: ${suggestions.brand}`);
+      setAiNote(
+        'AI suggestions applied to empty fields — review before saving.' +
+          (extra.length ? ` Also noted — ${extra.join(' · ')}.` : '') +
+          (suggestions.notes ? ` (${suggestions.notes})` : ''),
+      );
+    } catch (e) {
+      setAiNote((e as Error).message);
+    } finally {
+      setAiBusy(false);
+    }
+  }
 
   const set = <K extends keyof ProductFormValue>(k: K, val: ProductFormValue[K]) =>
     setV((p) => ({ ...p, [k]: val }));
@@ -191,7 +262,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
       collectionIds: v.collectionIds,
       tags: parseList(v.tags),
       ...Object.fromEntries(FLAGS.map((f) => [f.key, Boolean(v.flags[f.key])])),
-      media: parseList(v.mediaText.replace(/\n/g, ',')).map((url) => ({ url })),
+      media: parseLines(v.mediaText).map((url) => ({ url })),
       options,
       variants: matrix.map((row) => ({
         sku: row.sku,
@@ -222,7 +293,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
     router.refresh();
   }
 
-  const mediaUrls = parseList(v.mediaText.replace(/\n/g, ','));
+  const mediaUrls = parseLines(v.mediaText);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
@@ -361,9 +432,27 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
         </Card>
 
         <Card title="Media">
-          <MediaUploader
-            onUploaded={(url) => set('mediaText', v.mediaText ? `${v.mediaText}\n${url}` : url)}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <MediaUploader
+              value={mediaUrls}
+              onChange={(urls) => set('mediaText', urls.join('\n'))}
+            />
+            {aiAvailable && (
+              <button
+                type="button"
+                onClick={() => void runAiSuggest()}
+                disabled={aiBusy || mediaUrls.length === 0}
+                className="rounded-md border border-[var(--color-line)] px-3 py-3 text-sm text-[var(--color-muted)] hover:border-[var(--color-brand)] disabled:opacity-50"
+              >
+                {aiBusy ? 'Analysing…' : 'Suggest details with AI'}
+              </button>
+            )}
+          </div>
+          {aiNote && (
+            <p className="mt-2 rounded-md bg-[var(--color-canvas)] p-2 text-xs text-[var(--color-muted)]">
+              {aiNote}
+            </p>
+          )}
           <div className="mt-3">
             <Field label="Image URLs" hint="One per line. Uploaded files are added here automatically.">
               <Textarea
@@ -373,19 +462,6 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
               />
             </Field>
           </div>
-          {mediaUrls.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {mediaUrls.map((url) => (
-                // eslint-disable-next-line @next/next/no-img-element -- admin thumbnail, arbitrary hosts
-                <img
-                  key={url}
-                  src={url}
-                  alt=""
-                  className="h-16 w-16 rounded border border-[var(--color-line)] object-cover"
-                />
-              ))}
-            </div>
-          )}
         </Card>
 
         <Card title="Details">
