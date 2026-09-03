@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { clearToken, getToken } from '@/lib/client';
+import { clearToken, fetchMe, getToken, type AdminMe } from '@/lib/client';
 
 const NAV = [
   { href: '/', label: 'Overview' },
@@ -23,25 +23,49 @@ const NAV = [
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [me, setMe] = useState<AdminMe | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     if (!getToken()) {
       router.replace('/login');
-    } else {
-      setReady(true);
+      return;
     }
+    // Confirm with the API that this token belongs to a staff/admin account —
+    // a stale or non-admin token never renders the dashboard.
+    fetchMe().then((user) => {
+      if (cancelled) return;
+      if (!user) {
+        clearToken();
+        router.replace('/login');
+        return;
+      }
+      setMe(user);
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (!ready) {
     return <div className="p-10 text-sm text-[var(--color-muted)]">Loading…</div>;
   }
 
+  const who =
+    me?.email ?? ([me?.firstName, me?.lastName].filter(Boolean).join(' ') || 'Signed in');
+
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-60 shrink-0 border-r border-[var(--color-line)] bg-[var(--color-surface)] p-4 md:block">
-        <div className="px-2 py-3 text-sm font-semibold">
-          Velor<span className="text-[var(--color-brand)]">House</span> Admin
+        <div className="px-2 py-3">
+          <div className="text-sm font-semibold">
+            Velor<span className="text-[var(--color-brand)]">House</span> Admin
+          </div>
+          <div className="mt-0.5 truncate text-xs text-[var(--color-muted)]" title={who}>
+            {who}
+          </div>
         </div>
         <nav className="mt-4 space-y-1">
           {NAV.map((item) => {

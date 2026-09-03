@@ -71,6 +71,28 @@ export async function apiDownload(path: string, filename: string): Promise<void>
   URL.revokeObjectURL(url);
 }
 
+export interface AdminMe {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  kind: string;
+  isSuperAdmin: boolean;
+  roles: string[];
+}
+
+/** The signed-in user, or null when the token is missing / not a staff account. */
+export async function fetchMe(): Promise<AdminMe | null> {
+  if (!getToken()) return null;
+  try {
+    const me = await apiFetch<AdminMe>('/auth/me');
+    const isStaff = me.isSuperAdmin || me.kind === 'STAFF' || (me.roles?.length ?? 0) > 0;
+    return isStaff ? me : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function login(email: string, password: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: 'POST',
@@ -83,6 +105,13 @@ export async function login(email: string, password: string): Promise<void> {
   }
   const data = (await res.json()) as { accessToken: string };
   setToken(data.accessToken);
+
+  // Only staff / admins may hold an admin session.
+  const me = await fetchMe();
+  if (!me) {
+    clearToken();
+    throw new Error('This account does not have admin access.');
+  }
 }
 
 export function money(value: string | number, currency = 'INR'): string {
