@@ -55,6 +55,13 @@ export class ShippingAdminController {
     return this.shipping.status();
   }
 
+  /** Recent hits on the public Shiprocket webhook URL — diagnostics only. */
+  @Get('shipping/webhook-log')
+  @RequirePermissions('order:read')
+  webhookLog() {
+    return this.shipping.getWebhookProbes();
+  }
+
   @Get('orders/:orderId/serviceability')
   @RequirePermissions('order:read')
   serviceability(@Param('orderId') orderId: string) {

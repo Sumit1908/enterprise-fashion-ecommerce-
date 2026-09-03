@@ -474,11 +474,95 @@ export class ShippingService implements OnModuleInit, OnModuleDestroy {
   verifyWebhook(headers: Record<string, string | string[] | undefined>): boolean {
     const expected = env.SHIPROCKET_WEBHOOK_TOKEN;
     if (!expected) return false;
-    const got = pickHeader(headers, 'x-api-key') ?? pickHeader(headers, 'x-shiprocket-key');
+    const got =
+      pickHeader(headers, 'x-api-key') ??
+      pickHeader(headers, 'x-shiprocket-key') ??
+      pickHeader(headers, 'apikey') ??
+      pickHeader(headers, 'token');
     if (!got) return false;
     const a = Buffer.from(got);
     const b = Buffer.from(expected);
     return a.length === b.length && timingSafeEqual(a, b);
+  }
+
+  /**
+   * Record that a request hit the webhook URL (metadata only — never token or
+   * body *values*). Lets us confirm from the DB whether Shiprocket's request
+   * actually reaches the server. Best-effort; never throws.
+   */
+  async recordWebhookProbe(
+    req: {
+      method?: string;
+      ip?: string;
+      headers: Record<string, string | string[] | undefined>;
+    },
+    body?: SrWebhookBody | Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const h = req.headers ?? {};
+      const rawIp =
+        pickHeader(h, 'cf-connecting-ip') ?? pickHeader(h, 'x-forwarded-for') ?? req.ip ?? '';
+      const b = (body ?? {}) as Record<string, unknown>;
+      const entry = {
+        at: new Date().toISOString(),
+        method: (req.method ?? 'POST').toUpperCase(),
+        ip: (rawIp.split(',')[0] ?? '').trim().slice(0, 45),
+        userAgent: (pickHeader(h, 'user-agent') ?? '').slice(0, 160),
+        contentType: pickHeader(h, 'content-type') ?? null,
+        contentLength: pickHeader(h, 'content-length') ?? null,
+        headerNames: Object.keys(h).sort(),
+        hasApiKey: Boolean(
+          pickHeader(h, 'x-api-key') ??
+            pickHeader(h, 'x-shiprocket-key') ??
+            pickHeader(h, 'apikey') ??
+            pickHeader(h, 'token'),
+        ),
+        apiKeyMatches: this.verifyWebhook(h),
+        bodyKeys: Object.keys(b).slice(0, 40),
+        awbPresent: Boolean(b.awb),
+        statusPresent: Boolean(b.current_status ?? b.shipment_status),
+      };
+      const row = await this.prisma.integration.findUnique({
+        where: { provider: 'shiprocket_webhook' },
+      });
+      const cfg = (row?.config ?? {}) as { recent?: unknown[] };
+      const recent = [entry, ...(Array.isArray(cfg.recent) ? cfg.recent : [])].slice(0, 25);
+      await this.prisma.integration.upsert({
+        where: { provider: 'shiprocket_webhook' },
+        create: {
+          provider: 'shiprocket_webhook',
+          category: 'shipping',
+          isEnabled: true,
+          status: 'ok',
+          lastCheckedAt: new Date(),
+          config: { recent } as Prisma.InputJsonValue,
+        },
+        update: {
+          lastCheckedAt: new Date(),
+          config: { recent } as Prisma.InputJsonValue,
+        },
+      });
+      this.logger.log(
+        `Webhook hit: ${entry.method} ip=${entry.ip || '?'} ua="${entry.userAgent.slice(0, 60)}" ct=${entry.contentType ?? '-'} apiKey=${entry.hasApiKey ? (entry.apiKeyMatches ? 'match' : 'mismatch') : 'none'} bodyKeys=[${entry.bodyKeys.join(',')}]`,
+      );
+    } catch (err) {
+      this.logger.warn(`recordWebhookProbe failed: ${(err as Error).message}`);
+    }
+  }
+
+  /** Recent webhook hits (for the admin diagnostics endpoint). */
+  async getWebhookProbes() {
+    const row = await this.prisma.integration.findUnique({
+      where: { provider: 'shiprocket_webhook' },
+    });
+    const cfg = (row?.config ?? {}) as { recent?: unknown[] };
+    return {
+      webhookPath: '/api/v1/webhooks/shipping/shiprocket',
+      tokenConfigured: Boolean(env.SHIPROCKET_WEBHOOK_TOKEN),
+      lastHitAt: row?.lastCheckedAt ?? null,
+      count: Array.isArray(cfg.recent) ? cfg.recent.length : 0,
+      recent: Array.isArray(cfg.recent) ? cfg.recent : [],
+    };
   }
 
   async handleWebhook(body: SrWebhookBody): Promise<{ handled: boolean; reason?: string }> {
