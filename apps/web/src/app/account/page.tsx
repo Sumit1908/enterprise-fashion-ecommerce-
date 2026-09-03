@@ -159,7 +159,10 @@ function AccountInner() {
     [mobile, transport, widgetActive, widget, sendViaSms, goToOtpStep],
   );
 
-  const preparing = !widget.resolved || (widgetActive && !widget.ready);
+  // Only wait on the config round-trip (~200ms); if the shopper taps Continue
+  // before the widget script finishes booting, the send call waits briefly then
+  // falls back to SMS — no dead "Preparing…" button.
+  const preparing = !widget.resolved;
 
   async function submitPhone(e: React.FormEvent) {
     e.preventDefault();

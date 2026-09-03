@@ -103,6 +103,38 @@ function resolveConfig(): Promise<ResolvedConfig> {
   return configPromise;
 }
 
+// Resolves once initSendOTP has run and window.sendOtp/verifyOtp/retryOtp exist,
+// so a call fired before the widget finished booting waits rather than failing.
+let widgetReadyResolve: (() => void) | null = null;
+let widgetReadyPromise: Promise<void> | null = null;
+function widgetReadyGate(): Promise<void> {
+  if (!widgetReadyPromise) {
+    widgetReadyPromise = new Promise<void>((r) => {
+      widgetReadyResolve = r;
+    });
+  }
+  return widgetReadyPromise;
+}
+function markWidgetReady(): void {
+  widgetReadyGate();
+  widgetReadyResolve?.();
+}
+async function awaitWidgetMethod(
+  name: 'sendOtp' | 'verifyOtp' | 'retryOtp',
+  graceMs = 6000,
+): Promise<void> {
+  if (typeof window[name] === 'function') return;
+  await Promise.race([
+    widgetReadyGate(),
+    new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error('The OTP service is still starting. Please try again.')), graceMs),
+    ),
+  ]);
+  if (typeof window[name] !== 'function') {
+    throw new Error('The OTP service is unavailable right now. Please try again.');
+  }
+}
+
 let scriptPromise: Promise<void> | null = null;
 function loadScript(): Promise<void> {
   if (typeof window === 'undefined') return Promise.reject(new Error('no window'));
@@ -243,6 +275,7 @@ export function useMsg91Otp(): Msg91Otp {
               /* per-call failures are handled by the call-site promises */
             },
           });
+          markWidgetReady();
           setReady(true);
         });
       })
@@ -258,7 +291,7 @@ export function useMsg91Otp(): Msg91Otp {
   }, []);
 
   const sendOtp = useCallback(async (mobile: string) => {
-    if (typeof window.sendOtp !== 'function') throw new Error('OTP service is still loading. Please retry.');
+    await awaitWidgetMethod('sendOtp');
     tokenRef.current = null;
     const identifier = `91${mobile.replace(/\D/g, '').slice(-10)}`;
     await withTimeout<void>((resolve, reject) => {
@@ -271,7 +304,7 @@ export function useMsg91Otp(): Msg91Otp {
   }, []);
 
   const retryOtp = useCallback(async () => {
-    if (typeof window.retryOtp !== 'function') throw new Error('OTP service is still loading. Please retry.');
+    await awaitWidgetMethod('retryOtp');
     await withTimeout<void>((resolve, reject) => {
       window.retryOtp!(
         null,
@@ -282,7 +315,7 @@ export function useMsg91Otp(): Msg91Otp {
   }, []);
 
   const verifyOtp = useCallback(async (code: string) => {
-    if (typeof window.verifyOtp !== 'function') throw new Error('OTP service is still loading. Please retry.');
+    await awaitWidgetMethod('verifyOtp');
     return withTimeout<string>((resolve, reject) => {
       window.verifyOtp!(
         code.replace(/\D/g, ''),
