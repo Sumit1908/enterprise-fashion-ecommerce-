@@ -27,6 +27,9 @@ services:
       pnpm --filter @slay/config build &&
       pnpm --filter @slay/db build &&
       pnpm --filter @slay/api build
+    # Applies any pending Prisma migrations against the production DB after the
+    # build succeeds and before the new version goes live. Safe & idempotent.
+    preDeployCommand: pnpm --filter @slay/db exec prisma migrate deploy
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
@@ -133,6 +136,28 @@ services:
         value: indiapost
       - key: PINCODE_LOOKUP_TIMEOUT_MS
         value: "4000"
+      # Shiprocket courier integration. EMAIL/PASSWORD are for a Shiprocket
+      # "API user" (Settings -> API -> Configure). PICKUP_LOCATION is the exact
+      # nickname of a *verified* pickup address in the Shiprocket panel.
+      # WEBHOOK_TOKEN is a random secret you also paste into the Shiprocket
+      # webhook config (sent back as the `x-api-key` header). Webhook URL:
+      #   https://slay-jeans-api.onrender.com/api/v1/webhooks/shipping/shiprocket
+      # With EMAIL+PASSWORD set, confirmed orders are pushed to Shiprocket
+      # automatically (AWB assigned) — leave them unset to keep shipping manual.
+      - key: SHIPROCKET_EMAIL
+        sync: false
+      - key: SHIPROCKET_PASSWORD
+        sync: false
+      - key: SHIPROCKET_PICKUP_LOCATION
+        sync: false
+      - key: SHIPROCKET_WEBHOOK_TOKEN
+        sync: false
+      - key: SHIPROCKET_CHANNEL_ID
+        sync: false
+      - key: SHIPROCKET_AUTO_CREATE
+        value: "true"
+      - key: SHIPROCKET_AUTO_ASSIGN_AWB
+        value: "true"
 
   # ---------------------------------------------------------- Storefront (Next.js)
   - type: web

@@ -26,6 +26,18 @@ const STEP_LABEL: Record<string, string> = {
   SHIPPED: 'Shipped',
   OUT_FOR_DELIVERY: 'Out for delivery',
   DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+  RETURNED: 'Returned',
+};
+
+const SHIPMENT_LABEL: Record<string, string> = {
+  LABEL_CREATED: 'Ready to ship',
+  PICKED_UP: 'Picked up',
+  IN_TRANSIT: 'In transit',
+  OUT_FOR_DELIVERY: 'Out for delivery',
+  DELIVERED: 'Delivered',
+  FAILED: 'Delivery exception',
+  RTO: 'Returned to sender',
 };
 
 function OrderPage({ params }: { params: Promise<{ orderNumber: string }> }) {
@@ -186,6 +198,57 @@ function OrderPage({ params }: { params: Promise<{ orderNumber: string }> }) {
             })}
           </ol>
         </div>
+      )}
+
+      {order.shipments.length > 0 && (
+        <section className="mt-8 rounded-xl border border-[var(--color-sand)] p-5">
+          <h2 className="text-sm font-semibold">Shipment</h2>
+          {order.shipments.map((s, si) => (
+            <div key={si} className="mt-3 text-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="font-medium">
+                  {s.rawStatus && SHIPMENT_LABEL[s.status] !== s.rawStatus
+                    ? s.rawStatus
+                    : (SHIPMENT_LABEL[s.status] ?? s.status)}
+                </span>
+                {s.courierName && <span className="text-[var(--color-ink-soft)]">{s.courierName}</span>}
+                {s.awbNumber && (
+                  <span className="text-[var(--color-ink-soft)]">AWB {s.awbNumber}</span>
+                )}
+                {s.estimatedDelivery && (
+                  <span className="text-[var(--color-ink-soft)]">
+                    Est. {new Date(s.estimatedDelivery).toLocaleDateString('en-IN')}
+                  </span>
+                )}
+              </div>
+              {s.trackingUrl && (
+                <a
+                  href={s.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-xs font-semibold underline"
+                >
+                  Track with courier →
+                </a>
+              )}
+              {s.events.length > 0 && (
+                <ol className="mt-3 space-y-1.5 border-t border-[var(--color-sand)] pt-3">
+                  {s.events.map((e, ei) => (
+                    <li key={ei} className="flex gap-3 text-xs">
+                      <span className="whitespace-nowrap text-[var(--color-ink-soft)]">
+                        {new Date(e.at).toLocaleString('en-IN')}
+                      </span>
+                      <span>
+                        {e.message ?? SHIPMENT_LABEL[e.status] ?? e.status}
+                        {e.location ? ` · ${e.location}` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          ))}
+        </section>
       )}
 
       <div className="mt-8 grid gap-8 md:grid-cols-2">

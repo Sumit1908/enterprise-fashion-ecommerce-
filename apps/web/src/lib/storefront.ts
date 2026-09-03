@@ -197,9 +197,13 @@ export interface OrderView {
   shipments: {
     provider: string;
     awbNumber: string | null;
+    courierName: string | null;
     status: string;
+    rawStatus: string | null;
     trackingUrl: string | null;
     estimatedDelivery: string | null;
+    shippedAt: string | null;
+    deliveredAt: string | null;
     events: { status: string; message: string | null; location: string | null; at: string }[];
   }[];
 }

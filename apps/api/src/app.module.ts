@@ -20,6 +20,7 @@ import { EmailModule } from './email/email.module.js';
 import { SmsModule } from './sms/sms.module.js';
 import { NewsletterModule } from './newsletter/newsletter.module.js';
 import { WishlistModule } from './wishlist/wishlist.module.js';
+import { ShippingModule } from './shipping/shipping.module.js';
 
 const env = loadEnv();
 
@@ -49,6 +50,7 @@ const env = loadEnv();
     AdminModule,
     NewsletterModule,
     WishlistModule,
+    ShippingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
