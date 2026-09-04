@@ -6,6 +6,7 @@ import { apiDelete, apiFetch, apiUpload } from '@/lib/client';
 interface MediaConfig {
   driver: 's3' | 'local';
   persistent: boolean;
+  endpointConfigured?: boolean;
   maxMb: number;
   allowVideo: boolean;
   acceptedTypes: string[];
@@ -147,6 +148,12 @@ export function MediaUploader(props: Props) {
       {cfg && !cfg.persistent && (
         <p className="mt-1 text-xs text-[var(--color-bad)]">
           Storage is not on the cloud — uploads will be lost on the next deploy.
+        </p>
+      )}
+      {cfg && cfg.persistent && cfg.endpointConfigured === false && (
+        <p className="mt-1 text-xs text-[var(--color-bad)]">
+          Image storage is misconfigured on the server (missing storage endpoint) — uploads will fail.
+          Ask an admin to set <code>S3_ENDPOINT</code>.
         </p>
       )}
       {error && <p className="mt-1 text-xs text-[var(--color-bad)]">{error}</p>}

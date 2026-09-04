@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { extname, join } from 'node:path';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import {
   DeleteObjectCommand,
   PutObjectCommand,
@@ -70,12 +75,31 @@ export class MediaService {
         'Media is on the LOCAL DISK in production — uploads will NOT survive a redeploy. Configure S3/Supabase storage.',
       );
     }
+    if (this.driver === 's3' && !env.S3_ENDPOINT) {
+      this.logger.warn(
+        'S3 driver is active but S3_ENDPOINT is NOT set — the client will target AWS S3 directly and uploads will FAIL if the credentials belong to Supabase/another S3-compatible provider. Set S3_ENDPOINT to your storage endpoint.',
+      );
+    }
+  }
+
+  /** true when the s3 driver has everything it needs (or the driver is local). */
+  private get endpointConfigured(): boolean {
+    return this.driver !== 's3' || Boolean(env.S3_ENDPOINT || env.S3_PUBLIC_BASE_URL);
   }
 
   config() {
     return {
       driver: this.driver,
       persistent: this.driver === 's3',
+      endpointConfigured: this.endpointConfigured,
+      provider:
+        this.driver !== 's3'
+          ? 'local-disk'
+          : this.isSupabase()
+            ? 'supabase'
+            : env.S3_ENDPOINT
+              ? 's3-compatible'
+              : 'aws-s3',
       maxMb: env.MEDIA_MAX_MB,
       allowVideo: env.MEDIA_ALLOW_VIDEO,
       acceptedTypes: [...acceptedTypes().keys()],
@@ -137,15 +161,33 @@ export class MediaService {
     const key = this.buildKey(folder, ext);
 
     if (this.driver === 's3' && this.s3) {
-      await this.s3.send(
-        new PutObjectCommand({
-          Bucket: env.S3_BUCKET,
-          Key: key,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-          CacheControl: 'public, max-age=31536000, immutable',
-        }),
-      );
+      if (!this.endpointConfigured) {
+        this.logger.error(
+          'Image upload rejected: S3 driver active but S3_ENDPOINT / S3_PUBLIC_BASE_URL is unset.',
+        );
+        throw new ServiceUnavailableException(
+          'Image storage is not fully configured on the server (missing storage endpoint). Please contact the administrator.',
+        );
+      }
+      try {
+        await this.s3.send(
+          new PutObjectCommand({
+            Bucket: env.S3_BUCKET,
+            Key: key,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            CacheControl: 'public, max-age=31536000, immutable',
+          }),
+        );
+      } catch (err) {
+        // Never leak credentials/endpoints — log the error name only.
+        this.logger.error(
+          `S3 PutObject failed (${(err as Error).name}): ${(err as Error).message.slice(0, 200)}`,
+        );
+        throw new ServiceUnavailableException(
+          'Could not save the image to storage. Check the storage credentials / endpoint and try again.',
+        );
+      }
     } else {
       const dir = join(process.cwd(), env.MEDIA_UPLOAD_DIR, ...key.split('/').slice(0, -1));
       await mkdir(dir, { recursive: true });

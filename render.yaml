@@ -68,20 +68,26 @@ services:
       - key: SMTP_PASSWORD
         sync: false
       # Product-image storage — Supabase Storage (S3-compatible), permanent,
-      # survives every deploy/restart. Create a free Supabase project, a PUBLIC
-      # bucket named "product-media", then Storage -> S3 Connection -> new key.
-      #   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY -> the S3 access key pair
-      #   S3_ENDPOINT -> https://<project-ref>.supabase.co/storage/v1/s3
-      # Without these the API falls back to the local disk (NOT persistent).
+      # survives every deploy/restart. PUBLIC bucket "product-media".
+      # Set ALL of these in the Render dashboard (dashboard changes take effect
+      # immediately; render.yaml values only on a Blueprint sync):
+      #   S3_ENDPOINT       -> Supabase -> Storage -> S3 Connection -> "Endpoint"
+      #                        (looks like https://<ref>.storage.supabase.co/storage/v1/s3)
+      #   AWS_REGION        -> the region shown next to it (e.g. ap-southeast-1)
+      #   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY -> that page's "New access key"
+      # Without S3_ENDPOINT the S3 client silently targets real AWS S3 and every
+      # upload fails — the API now returns a clear error in that case.
       - key: S3_BUCKET
         value: product-media
       - key: S3_FORCE_PATH_STYLE
         value: "true"
+      - key: AWS_REGION
+        value: ap-southeast-1
+      - key: S3_ENDPOINT
+        sync: false
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: S3_ENDPOINT
         sync: false
       - key: S3_PUBLIC_BASE_URL # optional override — leave unset for Supabase
         sync: false
