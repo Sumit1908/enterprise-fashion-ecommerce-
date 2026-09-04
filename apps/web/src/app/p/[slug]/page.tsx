@@ -15,12 +15,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   try {
     const p = await api.product(slug);
-    const title = p.seo?.metaTitle || p.metaTitle || p.name;
+    // A custom SEO title is used verbatim (bypass the "%s | Velor House"
+    // template); otherwise the product name flows through the template.
+    const customTitle = p.seo?.metaTitle || p.metaTitle;
+    const title = customTitle || p.name;
     const description =
       p.seo?.metaDescription || p.shortDescription || `${p.name}${p.brand ? ` — ${p.brand.name}` : ''}`;
     const ogImage = p.seo?.ogImageUrl || p.media[0]?.url;
     return {
-      title,
+      title: customTitle ? { absolute: customTitle } : title,
       description,
       keywords: p.seo?.metaKeywords || undefined,
       alternates: p.seo?.canonicalUrl ? { canonical: p.seo.canonicalUrl } : undefined,
