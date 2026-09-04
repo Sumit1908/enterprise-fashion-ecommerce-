@@ -17,6 +17,12 @@ const nextConfig = {
       { protocol: 'https', hostname: '**' },
       { protocol: 'http', hostname: 'localhost' },
     ],
+    // 75 = next/image's own default (used everywhere we don't pass `quality`).
+    // 85 = the homepage hero only (components/home/hero-slider.tsx) — a
+    // deliberately higher bar for the single largest, most visible image on
+    // the site. Required allow-list for any non-default value (Next 15
+    // warns, Next 16 will hard-require it).
+    qualities: [75, 85],
   },
   async redirects() {
     return [
