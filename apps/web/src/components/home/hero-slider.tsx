@@ -2,11 +2,36 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { getImageProps } from 'next/image';
 import type { HomeResponse } from '@/lib/api';
 
 type Slide = HomeResponse['banners'][number];
 
 const AUTOPLAY_MS = 6000;
+
+const MOBILE_MEDIA = '(max-width: 767.98px)';
+const DESKTOP_MEDIA = '(min-width: 768px)';
+
+/**
+ * Runs a hero image through Next's built-in optimizer (AVIF/WebP + a real
+ * responsive srcset) while keeping the manual <picture> art-direction the
+ * design needs — `next/image`'s <Image> component doesn't support multiple
+ * <source> breakpoints directly, so we use the same optimizer via
+ * `getImageProps` and assemble the <picture> ourselves. Full-bleed hero, so
+ * `sizes="100vw"` at every breakpoint (each source only loads at its own
+ * media query, so mobile never pays for the desktop-sized variant).
+ */
+function heroImageProps(src: string, alt: string, isPriority: boolean) {
+  const { props } = getImageProps({
+    src,
+    alt,
+    fill: true,
+    sizes: '100vw',
+    quality: 85,
+    priority: isPriority,
+  });
+  return props;
+}
 
 export function HeroSlider({ slides }: { slides: Slide[] }) {
   const usable = slides.filter((s) => s.imageUrl);
@@ -50,6 +75,13 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
     >
       {usable.map((slide, i) => {
         const active = i === index;
+        const isPriority = i === 0; // only the first (LCP-candidate) slide is eager/high-priority
+        const alt = slide.headline ?? slide.title ?? '';
+        const desktop = heroImageProps(slide.imageUrl!, alt, isPriority);
+        const mobile = slide.imageMobileUrl
+          ? heroImageProps(slide.imageMobileUrl, alt, isPriority)
+          : null;
+
         return (
           <div
             key={slide.id}
@@ -61,18 +93,49 @@ export function HeroSlider({ slides }: { slides: Slide[] }) {
               active ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           >
+            {/* Preload hints for the LCP slide — matches the <picture> media
+                queries below so whichever breakpoint is active is fetched
+                immediately. getImageProps() (unlike <Image priority>) doesn't
+                inject these on its own for art-directed/multi-source images. */}
+            {isPriority && mobile && (
+              <link
+                rel="preload"
+                as="image"
+                href={mobile.src}
+                imageSrcSet={mobile.srcSet}
+                imageSizes={mobile.sizes}
+                media={MOBILE_MEDIA}
+                fetchPriority="high"
+              />
+            )}
+            {isPriority && (
+              <link
+                rel="preload"
+                as="image"
+                href={desktop.src}
+                imageSrcSet={desktop.srcSet}
+                imageSizes={desktop.sizes}
+                media={mobile ? DESKTOP_MEDIA : undefined}
+                fetchPriority="high"
+              />
+            )}
+
             <picture>
-              {slide.imageMobileUrl && (
-                <source media="(max-width: 767.98px)" srcSet={slide.imageMobileUrl} />
-              )}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {mobile && <source media={MOBILE_MEDIA} srcSet={mobile.srcSet} sizes={mobile.sizes} />}
+              {/* eslint-disable-next-line @next/next/no-img-element -- art-directed
+                  <picture> with a manual mobile/desktop source; Next's <Image>
+                  can't express multiple breakpoints, so getImageProps() feeds
+                  its optimized attrs (AVIF/WebP + responsive srcset) into a
+                  plain <img> here instead. */}
               <img
-                src={slide.imageUrl ?? ''}
-                alt={slide.headline ?? slide.title}
-                className="absolute inset-0 h-full w-full object-cover object-center"
-                loading={i === 0 ? 'eager' : 'lazy'}
-                fetchPriority={i === 0 ? 'high' : 'low'}
-                decoding="async"
+                {...desktop}
+                alt={alt}
+                // getImageProps()'s `style` (fill mode) only sets positioning —
+                // object-fit/object-position still need to come from us, exactly
+                // matching the original markup's crop/anchor.
+                className="object-cover object-center"
+                loading={isPriority ? 'eager' : 'lazy'}
+                fetchPriority={isPriority ? 'high' : 'low'}
                 draggable={false}
               />
             </picture>
