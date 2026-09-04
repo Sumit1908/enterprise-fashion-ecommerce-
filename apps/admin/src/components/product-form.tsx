@@ -42,12 +42,16 @@ export interface ProductFormValue {
   categoryIds: string[];
   collectionIds: string[];
   tags: string;
+  metaTitle: string;
+  metaDescription: string;
+  lowStockThreshold: string;
   mediaText: string;
   sizes: string;
   colours: Colour[];
-  /** stock + sku keyed by combo id ("size" | "colour" | "size||colour") */
+  /** stock + sku + optional price override, keyed by combo id ("size" | "colour" | "size||colour") */
   stock: Record<string, number>;
   skus: Record<string, string>;
+  prices: Record<string, string>;
 }
 
 const EMPTY: ProductFormValue = {
@@ -66,11 +70,15 @@ const EMPTY: ProductFormValue = {
   categoryIds: [],
   collectionIds: [],
   tags: '',
+  metaTitle: '',
+  metaDescription: '',
+  lowStockThreshold: '5',
   mediaText: '',
   sizes: '28, 30, 32, 34, 36',
   colours: [],
   stock: {},
   skus: {},
+  prices: {},
 };
 
 const parseList = (s: string) =>
@@ -208,9 +216,10 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
         ...r,
         sku: v.skus[r.key] || auto,
         stock: v.stock[r.key] ?? 10,
+        price: v.prices[r.key] ?? '',
       };
     });
-  }, [sizeList, colourList, skuBase, v.skus, v.stock]);
+  }, [sizeList, colourList, skuBase, v.skus, v.stock, v.prices]);
 
   function setColour(i: number, patch: Partial<Colour>) {
     const next = v.colours.map((c, idx) => (idx === i ? { ...c, ...patch } : c));
@@ -229,6 +238,11 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
     }
     if (matrix.length === 0) {
       setError('Add at least one size or colour so the product is purchasable.');
+      return;
+    }
+    const badPrice = matrix.find((r) => r.price && Number(r.price) > Number(v.mrp));
+    if (badPrice) {
+      setError(`Variant price for "${[badPrice.size, badPrice.colour].filter(Boolean).join(' / ')}" cannot exceed MRP.`);
       return;
     }
     setSaving(true);
@@ -261,13 +275,24 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
       categoryIds: v.categoryIds,
       collectionIds: v.collectionIds,
       tags: parseList(v.tags),
+      lowStockThreshold:
+        v.lowStockThreshold.trim() !== '' && Number.isFinite(Number(v.lowStockThreshold))
+          ? Math.max(0, Math.trunc(Number(v.lowStockThreshold)))
+          : undefined,
+      seo:
+        v.metaTitle.trim() || v.metaDescription.trim()
+          ? {
+              metaTitle: v.metaTitle.trim() || undefined,
+              metaDescription: v.metaDescription.trim() || undefined,
+            }
+          : undefined,
       ...Object.fromEntries(FLAGS.map((f) => [f.key, Boolean(v.flags[f.key])])),
       media: parseLines(v.mediaText).map((url) => ({ url })),
       options,
       variants: matrix.map((row) => ({
         sku: row.sku,
         optionValues: [row.size, row.colour].filter((x): x is string => Boolean(x)),
-        salePrice: Number(v.salePrice),
+        salePrice: row.price && Number.isFinite(Number(row.price)) ? Number(row.price) : Number(v.salePrice),
         stock: Number.isFinite(row.stock) ? row.stock : 0,
       })),
     };
@@ -393,6 +418,20 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
             </div>
           </div>
 
+          <div className="mt-4">
+            <Field
+              label="Low-stock alert threshold"
+              hint="Flags a variant as low stock on the Inventory page when its quantity falls to this or below. Applies to every variant."
+            >
+              <Input
+                type="number"
+                className="max-w-[8rem]"
+                value={v.lowStockThreshold}
+                onChange={(e) => set('lowStockThreshold', e.target.value)}
+              />
+            </Field>
+          </div>
+
           {matrix.length > 0 && (
             <table className="mt-4 w-full text-sm">
               <thead className="text-left text-xs uppercase text-[var(--color-muted)]">
@@ -400,6 +439,7 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
                   {sizeList.length > 0 && <th className="py-2 pr-2">Size</th>}
                   {colourList.length > 0 && <th className="py-2 pr-2">Colour</th>}
                   <th className="py-2 pr-2">SKU</th>
+                  <th className="py-2 pr-2">Price ₹</th>
                   <th className="py-2">Stock</th>
                 </tr>
               </thead>
@@ -412,6 +452,15 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
                       <Input
                         value={row.sku}
                         onChange={(e) => set('skus', { ...v.skus, [row.key]: e.target.value })}
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <Input
+                        type="number"
+                        className="w-24"
+                        placeholder={v.salePrice || 'base'}
+                        value={row.price}
+                        onChange={(e) => set('prices', { ...v.prices, [row.key]: e.target.value })}
                       />
                     </td>
                     <td className="py-2">
@@ -473,6 +522,37 @@ export function ProductForm({ initial }: { initial?: Partial<ProductFormValue> }
               <Input value={v.careInstructions} onChange={(e) => set('careInstructions', e.target.value)} />
             </Field>
           </div>
+        </Card>
+
+        <Card title="Search engine listing (SEO)">
+          <p className="mb-3 text-xs text-[var(--color-muted)]">
+            How this product shows on Google. Leave blank to fall back to the product name and short
+            description.
+          </p>
+          <Field label="Meta title" hint={`${v.metaTitle.length} chars · ~60 shows in Google`}>
+            <Input
+              value={v.metaTitle}
+              maxLength={180}
+              placeholder={v.name || 'Product name'}
+              onChange={(e) => set('metaTitle', e.target.value)}
+            />
+          </Field>
+          <div className="mt-4">
+            <Field
+              label="Meta description"
+              hint={`${v.metaDescription.length} chars · ~155 shows in Google`}
+            >
+              <Textarea
+                value={v.metaDescription}
+                maxLength={400}
+                placeholder={v.shortDescription || 'A short, compelling summary of the product.'}
+                onChange={(e) => set('metaDescription', e.target.value)}
+              />
+            </Field>
+          </div>
+          <p className="mt-3 text-xs text-[var(--color-muted)]">
+            URL: <span className="font-mono">/p/{v.slug || '(auto from name)'}</span>
+          </p>
         </Card>
       </div>
 

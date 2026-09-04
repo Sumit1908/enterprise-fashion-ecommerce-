@@ -15,10 +15,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   try {
     const p = await api.product(slug);
+    const title = p.seo?.metaTitle || p.metaTitle || p.name;
+    const description =
+      p.seo?.metaDescription || p.shortDescription || `${p.name}${p.brand ? ` — ${p.brand.name}` : ''}`;
+    const ogImage = p.seo?.ogImageUrl || p.media[0]?.url;
     return {
-      title: p.name,
-      description: p.shortDescription ?? undefined,
-      openGraph: { images: p.media[0]?.url ? [p.media[0].url] : [] },
+      title,
+      description,
+      keywords: p.seo?.metaKeywords || undefined,
+      alternates: p.seo?.canonicalUrl ? { canonical: p.seo.canonicalUrl } : undefined,
+      robots: p.seo?.noindex ? { index: false, follow: false } : undefined,
+      openGraph: {
+        title,
+        description,
+        type: 'website',
+        images: ogImage ? [ogImage] : [],
+      },
     };
   } catch {
     return { title: 'Product' };

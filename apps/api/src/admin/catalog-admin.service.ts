@@ -40,6 +40,34 @@ function emptyToNull(v: string | undefined | null): string | null {
   return t === '' ? null : t;
 }
 
+/**
+ * Neutralises the practical XSS vectors in admin-authored product HTML
+ * (script/style/iframe/embed/form blocks, on* handlers, javascript: URIs) while
+ * leaving ordinary formatting tags intact. The input is already permission-
+ * gated; this is defence-in-depth because the storefront PDP renders the
+ * description as raw HTML.
+ */
+export function sanitizeProductHtml(html: string): string {
+  return html
+    .replace(
+      /<\s*(script|style|iframe|object|embed|link|meta|base|form|svg)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,
+      '',
+    )
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta|base|form|svg)\b[^>]*\/?\s*>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(
+      /(href|src|srcset|xlink:href|action|formaction)\s*=\s*"\s*(?:javascript|vbscript|data:text\/html)[^"]*"/gi,
+      '$1="#"',
+    )
+    .replace(
+      /(href|src|srcset|xlink:href|action|formaction)\s*=\s*'\s*(?:javascript|vbscript|data:text\/html)[^']*'/gi,
+      "$1='#'",
+    )
+    .trim();
+}
+
 /** Split a "a|b, c" style cell into trimmed, non-empty tokens. */
 function splitList(raw: string | undefined): string[] {
   return (raw ?? '')
@@ -67,7 +95,9 @@ const PRODUCT_DETAIL_INCLUDE = {
     orderBy: { position: 'asc' },
     include: {
       optionValues: { include: { optionValue: { select: { value: true } } } },
-      inventory: { select: { onHand: true, reserved: true, warehouseId: true } },
+      inventory: {
+        select: { onHand: true, reserved: true, warehouseId: true, lowStockThreshold: true },
+      },
     },
   },
   seo: true,
@@ -319,7 +349,11 @@ export class CatalogAdminService {
       ...MERCH_FLAGS,
     ] as const) {
       const value = pick(key as never);
-      if (value !== undefined) data[key] = value;
+      if (value === undefined) continue;
+      data[key] =
+        key === 'description' && typeof value === 'string'
+          ? sanitizeProductHtml(value)
+          : value;
     }
     if (dto.brandId !== undefined) {
       data.brand = dto.brandId ? { connect: { id: dto.brandId } } : { disconnect: true };
@@ -401,6 +435,28 @@ export class CatalogAdminService {
       );
     }
 
+    if (dto.seo) {
+      const s = dto.seo;
+      const seoData = {
+        metaTitle: emptyToNull(s.metaTitle),
+        metaDescription: emptyToNull(s.metaDescription),
+        metaKeywords: emptyToNull(s.metaKeywords),
+        canonicalUrl: emptyToNull(s.canonicalUrl),
+        ogImageUrl: emptyToNull(s.ogImageUrl),
+        ...(s.noindex !== undefined ? { noindex: s.noindex } : {}),
+      };
+      await this.prisma.seo.upsert({
+        where: { productId },
+        create: { productId, ...seoData, noindex: s.noindex ?? false },
+        update: seoData,
+      });
+      // Keep the denormalised Product.metaTitle in sync (used by list/card reads).
+      await this.prisma.product.update({
+        where: { id: productId },
+        data: { metaTitle: emptyToNull(s.metaTitle) },
+      });
+    }
+
     if (dto.options || dto.variants) {
       await this.rebuildVariants(productId, dto, replace);
     }
@@ -443,6 +499,10 @@ export class CatalogAdminService {
       orderBy: { priority: 'desc' },
       select: { id: true },
     });
+    const lowStock =
+      dto.lowStockThreshold != null && Number.isFinite(dto.lowStockThreshold)
+        ? Math.max(0, Math.trunc(dto.lowStockThreshold))
+        : undefined;
 
     for (const [i, v] of (dto.variants ?? []).entries()) {
       const variant = await this.prisma.productVariant.create({
@@ -464,13 +524,21 @@ export class CatalogAdminService {
         },
       });
 
-      if (warehouse && v.stock != null) {
+      if (warehouse && (v.stock != null || lowStock != null)) {
         await this.prisma.inventoryLevel.upsert({
           where: {
             variantId_warehouseId: { variantId: variant.id, warehouseId: warehouse.id },
           },
-          create: { variantId: variant.id, warehouseId: warehouse.id, onHand: v.stock },
-          update: { onHand: v.stock },
+          create: {
+            variantId: variant.id,
+            warehouseId: warehouse.id,
+            onHand: v.stock ?? 0,
+            ...(lowStock != null ? { lowStockThreshold: lowStock } : {}),
+          },
+          update: {
+            ...(v.stock != null ? { onHand: v.stock } : {}),
+            ...(lowStock != null ? { lowStockThreshold: lowStock } : {}),
+          },
         });
       }
     }

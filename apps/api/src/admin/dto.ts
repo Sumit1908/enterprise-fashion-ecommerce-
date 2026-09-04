@@ -92,6 +92,8 @@ export class ProductCreateDto {
   @IsOptional() @IsString() originCountry?: string;
   @IsOptional() @Type(() => Number) @IsInt() weightGrams?: number;
   @IsOptional() @IsString() sizeGuideId?: string;
+  /** "Low stock" badge threshold applied to every variant's inventory level. */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(9999) lowStockThreshold?: number;
 
   @IsOptional() @IsArray() @IsString({ each: true }) categoryIds?: string[];
   @IsOptional() @IsArray() @IsString({ each: true }) collectionIds?: string[];

@@ -213,6 +213,7 @@ export class CatalogService {
         brand: true,
         taxClass: true,
         sizeGuide: true,
+        seo: true,
         categories: { include: { category: { select: { name: true, slug: true, path: true } } } },
         media: { orderBy: { position: 'asc' } },
         options: { include: { values: { orderBy: { position: 'asc' } } }, orderBy: { position: 'asc' } },

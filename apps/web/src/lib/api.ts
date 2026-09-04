@@ -113,9 +113,20 @@ export interface Facets {
   price: { min: number; max: number };
 }
 
+export interface ProductSeo {
+  metaTitle: string | null;
+  metaDescription: string | null;
+  metaKeywords: string | null;
+  canonicalUrl: string | null;
+  ogImageUrl: string | null;
+  noindex: boolean;
+}
+
 export interface ProductDetail extends ProductCard {
   description: string | null;
   shortDescription: string | null;
+  metaTitle: string | null;
+  seo: ProductSeo | null;
   fabricDetails: string | null;
   careInstructions: string | null;
   media: { url: string; alt: string | null; type: string }[];

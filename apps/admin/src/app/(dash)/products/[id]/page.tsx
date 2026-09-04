@@ -16,6 +16,8 @@ interface ApiProduct {
   salePrice: string;
   shortDescription: string | null;
   description: string | null;
+  metaTitle: string | null;
+  seo: { metaTitle: string | null; metaDescription: string | null } | null;
   fabricDetails: string | null;
   careInstructions: string | null;
   brand: { id: string; name: string } | null;
@@ -26,8 +28,9 @@ interface ApiProduct {
   options: { name: string; values: { value: string; hexColor: string | null }[] }[];
   variants: {
     sku: string;
+    salePrice: string | null;
     optionValues: { optionValue: { value: string } }[];
-    inventory: { onHand: number }[];
+    inventory: { onHand: number; lowStockThreshold?: number }[];
   }[];
   isFeatured: boolean;
   isBestSeller: boolean;
@@ -60,6 +63,9 @@ function toForm(p: ApiProduct): ProductFormValue {
 
   const stock: Record<string, number> = {};
   const skus: Record<string, string> = {};
+  const prices: Record<string, string> = {};
+  const base = Number(p.salePrice);
+  let lowStock: number | undefined;
   for (const variant of p.variants) {
     const vals = variant.optionValues.map((o) => o.optionValue.value);
     const size = vals.find((x) => sizeValues.has(x)) ?? null;
@@ -68,6 +74,12 @@ function toForm(p: ApiProduct): ProductFormValue {
     if (!key) continue;
     stock[key] = variant.inventory.reduce((sum, i) => sum + i.onHand, 0);
     skus[key] = variant.sku;
+    // Only surface a per-variant price when it differs from the product's base.
+    if (variant.salePrice != null && Number(variant.salePrice) !== base) {
+      prices[key] = String(Number(variant.salePrice));
+    }
+    const lt = variant.inventory.find((i) => i.lowStockThreshold != null)?.lowStockThreshold;
+    if (lt != null) lowStock = lt;
   }
 
   return {
@@ -81,6 +93,9 @@ function toForm(p: ApiProduct): ProductFormValue {
     salePrice: p.salePrice,
     shortDescription: p.shortDescription ?? '',
     description: p.description ?? '',
+    metaTitle: p.seo?.metaTitle ?? p.metaTitle ?? '',
+    metaDescription: p.seo?.metaDescription ?? '',
+    lowStockThreshold: String(lowStock ?? 5),
     fabricDetails: p.fabricDetails ?? '',
     careInstructions: p.careInstructions ?? '',
     flags: Object.fromEntries(FLAG_KEYS.map((k) => [k, p[k]])),
@@ -92,6 +107,7 @@ function toForm(p: ApiProduct): ProductFormValue {
     colours: (colourOpt?.values ?? []).map((x) => ({ name: x.value, hex: x.hexColor ?? '#2f4058' })),
     stock,
     skus,
+    prices,
   };
 }
 
