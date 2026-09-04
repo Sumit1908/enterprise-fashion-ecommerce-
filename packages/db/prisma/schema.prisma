@@ -484,6 +484,11 @@ model Product {
   lookItems        LookItem[]
 
   @@index([status, publishedAt])
+  // Matches buildProductWhere()'s base filter used by every storefront listing,
+  // facets and PDP query (status ACTIVE + deletedAt null + publishedAt <= now).
+  @@index([status, deletedAt, publishedAt])
+  // price_asc / price_desc sort and the min/max price facet filter.
+  @@index([salePrice])
   @@index([brandId])
   @@index([isFeatured])
   @@index([isBestSeller])

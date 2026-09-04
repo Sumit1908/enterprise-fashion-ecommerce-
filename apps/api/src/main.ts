@@ -8,6 +8,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { json, urlencoded } from 'express';
 import { loadEnv } from '@slay/config';
 import { AppModule } from './app.module.js';
@@ -16,6 +17,11 @@ import { HttpExceptionFilter } from './common/http-exception.filter.js';
 async function bootstrap() {
   const env = loadEnv();
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: false });
+
+  // gzip/brotli-negotiated compression for every response over ~1KB (the
+  // package's default threshold) — JSON product/catalog payloads shrink
+  // 60-80%, which matters most on the 4G connections we're targeting.
+  app.use(compression());
 
   // Serve locally-stored media when S3 is not configured.
   app.useStaticAssets(join(process.cwd(), env.MEDIA_UPLOAD_DIR), {
