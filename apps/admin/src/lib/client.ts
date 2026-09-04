@@ -16,6 +16,10 @@ export function clearToken(): void {
   window.localStorage.removeItem(TOKEN_KEY);
 }
 
+// Bounds every admin API call so a hung backend doesn't leave the dashboard
+// stuck on "Loading…" forever.
+const FETCH_TIMEOUT_MS = 20_000;
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_BASE}/api/v1${path}`, {
@@ -25,6 +29,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
       ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
+    signal: init.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (res.status === 401) {
     clearToken();
