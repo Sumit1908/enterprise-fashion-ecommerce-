@@ -9,49 +9,54 @@ import type { SrWebhookBody } from './shiprocket.types.js';
 /**
  * Shiprocket tracking webhook.
  *
- * Configure in the Shiprocket panel: Settings → API → Webhooks →
- *   URL:  https://slay-jeans-api.onrender.com/api/v1/webhooks/shipping/shiprocket
- *   Token / x-api-key:  the value of SHIPROCKET_WEBHOOK_TOKEN
+ * IMPORTANT — Shiprocket's webhook validator REFUSES any URL containing the
+ * keywords "shiprocket", "kartrocket", "sr" or "kr" (it shows "unable to send
+ * request to mentioned api"). So the canonical path is keyword-free:
  *
- * Hard rules for this endpoint (a webhook consumer must be maximally lenient):
- *  - EVERY request — GET, HEAD, POST, any body, any content-type, valid or
- *    invalid JSON, token or no token — gets HTTP 200 with a small fixed body.
- *    Shiprocket's "Test Webhook" reports "unable to send request to mentioned
- *    api" on *any* non-2xx or timeout, so this never returns 4xx/5xx.
- *  - Every hit is recorded (metadata only, never secret values) so we can tell
- *    whether Shiprocket's request actually reaches the server.
+ *   https://slay-jeans-api.onrender.com/api/v1/webhooks/shipping/courier
+ *   (aliases: /api/v1/webhooks/logistics , and the legacy
+ *    /api/v1/webhooks/shipping/shiprocket which Shiprocket will reject but which
+ *    the internal keep-warm ping / older docs may still hit)
+ *
+ * Auth: Shiprocket sends the configured token in whichever header the panel's
+ * "Auth Token Type" selects — usually `Authorization` (raw value, sometimes
+ * `Bearer <token>`) or `x-api-key`. `ShippingService.verifyWebhook` accepts all
+ * of them.
+ *
+ * Hard rules: EVERY request (any method, any body, token or not) → HTTP 200 with
+ * a small fixed body. Shiprocket disables a webhook that ever returns non-2xx.
+ * Every hit is recorded (metadata only, never secret values).
  */
 @ApiExcludeController()
 @Public()
 @SkipThrottle()
-@Controller('webhooks/shipping')
+@Controller('webhooks')
 export class ShippingWebhookController {
   private readonly logger = new Logger(ShippingWebhookController.name);
 
   constructor(private readonly shipping: ShippingService) {}
 
-  @All('shiprocket')
+  @All(['shipping/courier', 'logistics', 'shipping/shiprocket'])
   @HttpCode(200)
-  async shiprocket(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async courierWebhook(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const method = req.method.toUpperCase();
     const body = method === 'GET' || method === 'HEAD' ? {} : normaliseBody(req);
 
     void this.shipping.recordWebhookProbe(
       req,
       method === 'GET' || method === 'HEAD' ? undefined : (body as Record<string, unknown>),
+      req.originalUrl,
     );
 
-    // Explicit fixed-length response so strict HTTP clients don't choke on
-    // chunked transfer encoding.
     res.setHeader('Cache-Control', 'no-store');
 
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-      return { ok: true, endpoint: 'shiprocket-webhook' };
+      return { ok: true, endpoint: 'courier-webhook' };
     }
 
     if (!this.shipping.verifyWebhook(req.headers)) {
       this.logger.warn(
-        `Shiprocket webhook: unverified (${describeAuth(req.headers)}) — set SHIPROCKET_WEBHOOK_TOKEN and match it in the Shiprocket panel`,
+        `Courier webhook: unverified (${describeAuth(req.headers)}) — set SHIPROCKET_WEBHOOK_TOKEN and match it in the Shiprocket panel`,
       );
       return { received: true, handled: false, reason: 'unverified' };
     }
@@ -60,7 +65,7 @@ export class ShippingWebhookController {
       const result = await this.shipping.handleWebhook(body);
       return { received: true, ...result };
     } catch (err) {
-      this.logger.error(`Shiprocket webhook processing error: ${(err as Error).message}`);
+      this.logger.error(`Courier webhook processing error: ${(err as Error).message}`);
       return { received: true, handled: false, reason: 'error' };
     }
   }
@@ -68,7 +73,7 @@ export class ShippingWebhookController {
 
 /* -------------------------------------------------------------------------- */
 
-/** Parse whatever Shiprocket sent into an object, tolerating junk. */
+/** Parse whatever the courier sent into an object, tolerating junk. */
 function normaliseBody(req: Request): SrWebhookBody {
   const b = (req as Request & { body?: unknown }).body;
   if (b && typeof b === 'object' && !Buffer.isBuffer(b) && !Array.isArray(b)) {
@@ -91,6 +96,6 @@ function normaliseBody(req: Request): SrWebhookBody {
 /** Non-sensitive description of the auth-header situation, for logs. */
 function describeAuth(h: Record<string, string | string[] | undefined>): string {
   const has = (n: string) => (h[n] ?? h[n.toLowerCase()]) != null;
-  const present = ['x-api-key', 'x-shiprocket-key', 'authorization', 'token', 'apikey'].filter(has);
+  const present = ['authorization', 'x-api-key', 'x-shiprocket-key', 'token', 'apikey'].filter(has);
   return present.length ? `auth header(s) present: ${present.join(', ')}` : 'no auth header on request';
 }

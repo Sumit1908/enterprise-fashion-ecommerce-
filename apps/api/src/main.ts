@@ -32,13 +32,14 @@ async function bootstrap() {
   );
   app.use(cookieParser(env.COOKIE_SECRET));
 
-  // The Shiprocket webhook must NEVER return 4xx/5xx — their "Test Webhook"
-  // reports failure on any non-2xx. Parse its body leniently (any content-type,
-  // and a JSON syntax error becomes an empty body instead of a 400). The raw
-  // body is still captured. This runs before the strict global parser below;
-  // body-parser marks the request as parsed so the global one then skips it.
+  // The courier/Shiprocket webhook must NEVER return 4xx/5xx — the provider's
+  // "Test Webhook" reports failure on any non-2xx. Parse its body leniently (any
+  // content-type, and a JSON syntax error becomes an empty body instead of a
+  // 400). The raw body is still captured. This runs before the strict global
+  // parser below; body-parser marks the request as parsed so the global one then
+  // skips it. (Payments webhooks live under /webhooks/payments and are untouched.)
   app.use(
-    '/api/v1/webhooks/shipping/shiprocket',
+    ['/api/v1/webhooks/shipping', '/api/v1/webhooks/logistics'],
     (
       req: IncomingMessage & { rawBody?: Buffer; body?: unknown },
       res: import('node:http').ServerResponse,

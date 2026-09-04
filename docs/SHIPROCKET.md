@@ -43,8 +43,12 @@ Never put these in frontend env or Git. They are `sync: false` in `render.yaml`.
 
 Shiprocket panel → **Settings → API → Webhooks**:
 
-- URL: `https://slay-jeans-api.onrender.com/api/v1/webhooks/shipping/shiprocket`
-- Token / `x-api-key`: the value of `SHIPROCKET_WEBHOOK_TOKEN`
+- URL: `https://slay-jeans-api.onrender.com/api/v1/webhooks/logistics`
+  (Shiprocket's validator **rejects** any URL containing `shiprocket` / `sr` /
+  `kr` / `kartrocket` — so the path is keyword-free. Alias:
+  `…/api/v1/webhooks/shipping/courier`.)
+- Auth Token Type: `x-api-key` (or `Authorization`) · Token: the value of
+  `SHIPROCKET_WEBHOOK_TOKEN`
 
 The endpoint always returns `200`; the body reports `handled: true|false`.
 Requests without a matching `x-api-key` are ignored.
@@ -80,7 +84,7 @@ apps/api/src/shipping/
   status-map.ts                Shiprocket status → ShipmentStatus / OrderStatus
   shipping.service.ts          orchestration + DB sync + webhook + 45-min poll
   shipping.controller.ts       /api/v1/admin/* (order:read / order:update)
-  shipping-webhook.controller.ts   /api/v1/webhooks/shipping/shiprocket (public, token-verified)
+  shipping-webhook.controller.ts   /api/v1/webhooks/logistics (+ /shipping/courier) — public, token-verified, always 200
   shipping.module.ts
 apps/api/src/orders/orders.service.ts   finalizePayment() → shipping.autoCreateForOrder()
 ```

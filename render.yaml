@@ -142,8 +142,9 @@ services:
       # "API user" (Settings -> API -> Configure). PICKUP_LOCATION is the exact
       # nickname of a *verified* pickup address in the Shiprocket panel.
       # WEBHOOK_TOKEN is a random secret you also paste into the Shiprocket
-      # webhook config (sent back as the `x-api-key` header). Webhook URL:
-      #   https://slay-jeans-api.onrender.com/api/v1/webhooks/shipping/shiprocket
+      # webhook config (Auth Token Type "x-api-key" or "Authorization"). Webhook
+      # URL (must NOT contain the word "shiprocket" — their validator blocks it):
+      #   https://slay-jeans-api.onrender.com/api/v1/webhooks/logistics
       # With EMAIL+PASSWORD set, confirmed orders are pushed to Shiprocket
       # automatically (AWB assigned) — leave them unset to keep shipping manual.
       - key: SHIPROCKET_EMAIL

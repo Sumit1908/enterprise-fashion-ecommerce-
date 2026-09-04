@@ -97,7 +97,7 @@ export class ShippingService implements OnModuleInit, OnModuleDestroy {
       autoCreate: env.SHIPROCKET_AUTO_CREATE,
       autoAssignAwb: env.SHIPROCKET_AUTO_ASSIGN_AWB,
       webhookConfigured: Boolean(env.SHIPROCKET_WEBHOOK_TOKEN),
-      webhookPath: '/api/v1/webhooks/shipping/shiprocket',
+      webhookUrl: `${env.API_URL.replace(/\/$/, '')}/api/v1/webhooks/logistics`,
     };
   }
 
@@ -471,14 +471,25 @@ export class ShippingService implements OnModuleInit, OnModuleDestroy {
 
   /* ---------------------------------------------------------- webhook */
 
-  verifyWebhook(headers: Record<string, string | string[] | undefined>): boolean {
-    const expected = env.SHIPROCKET_WEBHOOK_TOKEN;
-    if (!expected) return false;
-    const got =
+  /** Extract the webhook token from whichever header the Shiprocket panel uses. */
+  private webhookTokenFromHeaders(
+    headers: Record<string, string | string[] | undefined>,
+  ): string | undefined {
+    const raw =
       pickHeader(headers, 'x-api-key') ??
       pickHeader(headers, 'x-shiprocket-key') ??
       pickHeader(headers, 'apikey') ??
-      pickHeader(headers, 'token');
+      pickHeader(headers, 'token') ??
+      pickHeader(headers, 'authorization');
+    if (!raw) return undefined;
+    // "Auth Token Type: Authorization" may send "Bearer <token>" or "Token <token>".
+    return raw.replace(/^(Bearer|Token)\s+/i, '').trim() || undefined;
+  }
+
+  verifyWebhook(headers: Record<string, string | string[] | undefined>): boolean {
+    const expected = env.SHIPROCKET_WEBHOOK_TOKEN;
+    if (!expected) return false;
+    const got = this.webhookTokenFromHeaders(headers);
     if (!got) return false;
     const a = Buffer.from(got);
     const b = Buffer.from(expected);
@@ -497,26 +508,27 @@ export class ShippingService implements OnModuleInit, OnModuleDestroy {
       headers: Record<string, string | string[] | undefined>;
     },
     body?: SrWebhookBody | Record<string, unknown>,
+    url?: string,
   ): Promise<void> {
     try {
       const h = req.headers ?? {};
       const rawIp =
         pickHeader(h, 'cf-connecting-ip') ?? pickHeader(h, 'x-forwarded-for') ?? req.ip ?? '';
       const b = (body ?? {}) as Record<string, unknown>;
+      const authHeaders = ['authorization', 'x-api-key', 'x-shiprocket-key', 'token', 'apikey'].filter(
+        (n) => (h[n] ?? h[n.toLowerCase()]) != null,
+      );
       const entry = {
         at: new Date().toISOString(),
         method: (req.method ?? 'POST').toUpperCase(),
+        path: (url ?? '').split('?')[0]?.slice(0, 120) ?? null,
         ip: (rawIp.split(',')[0] ?? '').trim().slice(0, 45),
         userAgent: (pickHeader(h, 'user-agent') ?? '').slice(0, 160),
         contentType: pickHeader(h, 'content-type') ?? null,
         contentLength: pickHeader(h, 'content-length') ?? null,
         headerNames: Object.keys(h).sort(),
-        hasApiKey: Boolean(
-          pickHeader(h, 'x-api-key') ??
-            pickHeader(h, 'x-shiprocket-key') ??
-            pickHeader(h, 'apikey') ??
-            pickHeader(h, 'token'),
-        ),
+        authHeaders,
+        hasApiKey: authHeaders.length > 0,
         apiKeyMatches: this.verifyWebhook(h),
         bodyKeys: Object.keys(b).slice(0, 40),
         awbPresent: Boolean(b.awb),
@@ -557,7 +569,13 @@ export class ShippingService implements OnModuleInit, OnModuleDestroy {
     });
     const cfg = (row?.config ?? {}) as { recent?: unknown[] };
     return {
-      webhookPath: '/api/v1/webhooks/shipping/shiprocket',
+      // Shiprocket rejects URLs containing "shiprocket"/"sr"/"kr" — use these:
+      canonicalWebhookUrl: `${env.API_URL.replace(/\/$/, '')}/api/v1/webhooks/logistics`,
+      acceptedPaths: [
+        '/api/v1/webhooks/logistics',
+        '/api/v1/webhooks/shipping/courier',
+        '/api/v1/webhooks/shipping/shiprocket (legacy — Shiprocket will reject this one)',
+      ],
       tokenConfigured: Boolean(env.SHIPROCKET_WEBHOOK_TOKEN),
       lastHitAt: row?.lastCheckedAt ?? null,
       count: Array.isArray(cfg.recent) ? cfg.recent.length : 0,
