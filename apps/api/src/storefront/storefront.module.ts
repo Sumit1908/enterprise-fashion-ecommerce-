@@ -1,4 +1,4 @@
-import { Controller, Get, Module, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Header, Module, Query, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@slay/db';
 import { AuthModule } from '../auth/auth.module.js';
@@ -49,6 +49,7 @@ class StorefrontController {
 
   @Public()
   @Get('home')
+  @Header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
   async home() {
     const now = new Date();
     const [sections, banners, testimonials, collections, instagram, lookbooks, menuCategories] = await Promise.all([

@@ -52,6 +52,10 @@ export class ApiError extends Error {
   }
 }
 
+// Bounds every client-side call so a hung/unreachable API rejects with a
+// clear ApiError-able message instead of leaving buttons stuck on "…" forever.
+const FETCH_TIMEOUT_MS = 20_000;
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
@@ -62,7 +66,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const auth = getAuthToken();
   if (auth) headers.authorization = `Bearer ${auth}`;
 
-  const res = await fetch(`${API_BASE}/api/v1${path}`, { ...init, headers });
+  const res = await fetch(`${API_BASE}/api/v1${path}`, {
+    ...init,
+    headers,
+    signal: init.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   const text = await res.text();
   const data = text ? (JSON.parse(text) as unknown) : null;
   if (!res.ok) {

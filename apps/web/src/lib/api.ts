@@ -61,10 +61,16 @@ export interface CategoryNode {
   children: CategoryNode[];
 }
 
+// Bounds every server-side fetch so a hung/unreachable API surfaces a clear
+// error (and the page's existing catch-fallback) within 15s instead of
+// leaving the visitor on a blank/loading page indefinitely.
+const FETCH_TIMEOUT_MS = 15_000;
+
 async function get<T>(path: string, revalidate = 60): Promise<T> {
   const res = await fetch(`${API_BASE}/api/v1${path}`, {
     next: { revalidate },
     headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     throw new Error(`API ${path} failed: ${res.status}`);
