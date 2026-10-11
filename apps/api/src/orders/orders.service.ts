@@ -276,7 +276,17 @@ export class OrdersService {
     const codPending = details.codPending ?? payment.method === 'COD';
     const wh = await this.defaultWarehouseId();
 
-    await this.prisma.$transaction(async (tx) => {
+    const finalized = await this.prisma.$transaction(async (tx) => {
+      // Claim the order atomically. The first finaliser sets confirmedAt; any
+      // repeat or concurrent call (client verify racing the webhook, or a COD
+      // payment, which stays PENDING) matches nothing and stops here, so stock,
+      // coupon and loyalty side effects run exactly once.
+      const claim = await tx.order.updateMany({
+        where: { id: order.id, confirmedAt: null },
+        data: { confirmedAt: new Date() },
+      });
+      if (claim.count === 0) return false;
+
       await tx.payment.update({
         where: { id: payment.id },
         data: {
@@ -383,8 +393,13 @@ export class OrdersService {
           data: { orderId: order.id, orderNumber: order.orderNumber },
         },
       });
+      return true;
     }, { timeout: 20_000 });
 
+    if (!finalized) {
+      this.logger.log(`Order ${order.orderNumber} already finalised; skipped (${details.source})`);
+      return;
+    }
     this.logger.log(`Order ${order.orderNumber} finalised (${details.source})`);
 
     // Hand the confirmed order to Shiprocket — best-effort, never blocks or
@@ -459,7 +474,7 @@ export class OrdersService {
           ${addrLine ? `<p style="font-size:13px;color:#5f574e">Delivering to: ${addrLine}</p>` : ''}
           <p style="margin:20px 0"><a href="${track}" style="background:#191512;color:#fff;padding:10px 18px;text-decoration:none;font-size:13px">Track your order</a></p>
           <p style="font-size:12px;color:#8c8377;border-top:1px solid #e7dfd0;padding-top:12px">
-            Need help? Email <a href="mailto:${BRAND.email}" style="color:#8c8377">${BRAND.email}</a> or WhatsApp ${BRAND.phoneDisplay}.<br>
+            Need help? Email <a href="mailto:${BRAND.email}" style="color:#8c8377">${BRAND.email}</a>.<br>
             ${BRAND.name}, ${BRAND.addressInline}
           </p>
         </div>`,
@@ -519,12 +534,24 @@ export class OrdersService {
     if (payment.status === 'PAID') {
       return { status: 'paid', orderNumber: order.orderNumber };
     }
+    // COD was confirmed at placement and has nothing to verify online.
+    // Re-finalising it would commit the order's stock a second time.
+    if (payment.method === 'COD') {
+      throw new BadRequestException('Cash on Delivery orders have no online payment to verify');
+    }
+    // Only ever verify against the gateway order WE created for this payment (it
+    // carries our amount). A client-supplied id could belong to a different,
+    // cheaper order whose signature is equally valid.
+    const providerOrderId = payment.gatewayOrderId ?? undefined;
+    if (input.providerOrderId && input.providerOrderId !== providerOrderId) {
+      throw new BadRequestException('Payment does not belong to this order');
+    }
 
     const result = await this.payments.verify(payment.gateway ?? 'mock', {
       paymentId: payment.id,
       orderNumber: order.orderNumber,
       amount: toNumber(payment.amount),
-      providerOrderId: input.providerOrderId ?? payment.gatewayOrderId ?? undefined,
+      providerOrderId,
       providerPaymentId: input.providerPaymentId,
       signature: input.signature,
       mockOutcome: input.mockOutcome,

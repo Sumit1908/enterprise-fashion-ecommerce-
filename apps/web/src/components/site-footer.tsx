@@ -93,24 +93,6 @@ export function SiteFooter() {
           <Heading>Get in Touch</Heading>
           <ul className="mt-5 space-y-4 text-sm text-[var(--color-ink-soft)]">
             <li className="flex items-start gap-2.5">
-              <IconWhatsApp />
-              <a
-                href={SITE.whatsappUrl}
-                className="underline decoration-1 underline-offset-2 transition-colors hover:text-[var(--color-ink)]"
-              >
-                {SITE.phoneDisplay}
-              </a>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <IconPhone />
-              <a
-                href={`tel:${SITE.phoneE164}`}
-                className="transition-colors hover:text-[var(--color-ink)]"
-              >
-                {SITE.phoneDisplay}
-              </a>
-            </li>
-            <li className="flex items-start gap-2.5">
               <IconMail />
               <a
                 href={`mailto:${SITE.email}`}
@@ -122,11 +104,10 @@ export function SiteFooter() {
           </ul>
 
           <div className="mt-6 flex gap-3 text-[var(--color-ink)]">
-            {/* Instagram + WhatsApp are the live channels; add real Facebook / X URLs when available. */}
+            {/* Add real Instagram / Facebook / X profile URLs when available. */}
             <Social label="Instagram" href="https://instagram.com"><IconInstagram /></Social>
             <Social label="Facebook" href="https://facebook.com"><IconFacebook /></Social>
             <Social label="X" href="https://x.com"><IconX /></Social>
-            <Social label="WhatsApp" href={SITE.whatsappUrl}><IconWhatsApp /></Social>
           </div>
         </div>
       </div>
@@ -166,21 +147,6 @@ function Social({
 
 const svg = 'h-[1.05rem] w-[1.05rem] shrink-0';
 
-function IconWhatsApp() {
-  return (
-    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 20l1.4-4A8 8 0 1 1 8 18.6L4 20z" />
-      <path d="M9 9c0 4 2 6 6 6M9 9c0-1 .5-1.6 1-1.6M15 15c1 0 1.6-.5 1.6-1" />
-    </svg>
-  );
-}
-function IconPhone() {
-  return (
-    <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 4h3l1.5 4-2 1.5a11 11 0 0 0 5 5L19 16l4 1.5V21a2 2 0 0 1-2 2A18 18 0 0 1 3 5a2 2 0 0 1 2-1z" />
-    </svg>
-  );
-}
 function IconMail() {
   return (
     <svg viewBox="0 0 24 24" className={svg} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

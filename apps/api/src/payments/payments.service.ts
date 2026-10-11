@@ -97,6 +97,10 @@ export class PaymentsService {
   verify(providerId: string, input: VerifyInput): Promise<VerifyResult> {
     const provider = this.providerById(providerId);
     if (!provider) return Promise.resolve({ ok: false, reason: 'Unknown payment provider' });
+    // Never let a disabled provider (e.g. the mock gateway in production) confirm a payment.
+    if (!provider.isAvailable()) {
+      return Promise.resolve({ ok: false, reason: 'Payment provider is not available' });
+    }
     return provider.verify(input);
   }
 

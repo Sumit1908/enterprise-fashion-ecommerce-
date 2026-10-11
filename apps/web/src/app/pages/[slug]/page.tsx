@@ -21,7 +21,6 @@ interface InfoPage {
 
 const UPDATED = '30 August 2026';
 const EMAIL = SITE.email;
-const PHONE = SITE.phoneDisplay;
 const ADDRESS = `${SITE.name}, ${SITE.addressInline}`;
 
 /**
@@ -45,7 +44,7 @@ const PAGES: Record<string, InfoPage> = {
       { p: `${SITE.name} is based in ${SITE.address.city}, ${SITE.address.state}, India. We ship across India.` },
       { p: `Full address: ${ADDRESS}` },
       { h: 'Talk to us' },
-      { p: `Email ${EMAIL} or message us on WhatsApp at ${PHONE}. We reply within one business day, ${SITE.supportHours}.` },
+      { p: `Email ${EMAIL}. We reply within one business day, ${SITE.supportHours}.` },
     ],
   },
 
@@ -56,7 +55,6 @@ const PAGES: Record<string, InfoPage> = {
       { h: 'Customer support' },
       { list: [
         `Email: ${EMAIL}`,
-        `Phone / WhatsApp: ${PHONE}`,
         `Hours: ${SITE.supportHours}`,
       ] },
       { h: 'Business address' },
@@ -93,9 +91,9 @@ const PAGES: Record<string, InfoPage> = {
       { h: 'Tracking' },
       { p: 'Once your order ships you will receive a tracking link by email. You can also track any order from the Track Order page using your order number and the email used at checkout.' },
       { h: 'Undelivered orders' },
-      { p: `If a shipment is returned to us undelivered (wrong address, repeated failed delivery attempts, or refusal to accept), we will contact you at ${EMAIL} or ${PHONE} to arrange re-dispatch or a refund as per our Return & Refund Policy.` },
+      { p: `If a shipment is returned to us undelivered (wrong address, repeated failed delivery attempts, or refusal to accept), we will contact you by email to arrange re-dispatch or a refund as per our Return & Refund Policy.` },
       { h: 'Questions' },
-      { p: `Email ${EMAIL} or message ${PHONE} on WhatsApp.` },
+      { p: `Email ${EMAIL}.` },
     ],
   },
 
@@ -114,7 +112,7 @@ const PAGES: Record<string, InfoPage> = {
       ] },
       { h: 'How to start a return' },
       { list: [
-        `Email ${EMAIL} with your order number (SJ-…) and the item(s) you want to return, or message ${PHONE} on WhatsApp.`,
+        `Email ${EMAIL} with your order number (SJ-…) and the item(s) you want to return.`,
         'We will confirm the return and share pickup or drop-off instructions.',
         'Pack the item securely with tags attached.',
       ] },
@@ -140,7 +138,7 @@ const PAGES: Record<string, InfoPage> = {
       { h: 'Cancelling an order' },
       { list: [
         'You can cancel an order any time before it is dispatched, at no charge.',
-        `To cancel, email ${EMAIL} or message ${PHONE} on WhatsApp with your order number (SJ-…) as soon as possible.`,
+        `To cancel, email ${EMAIL} with your order number (SJ-…) as soon as possible.`,
         'Once an order has been dispatched it cannot be cancelled — you can refuse delivery or start a return once it arrives, as per our Return & Refund Policy.',
       ] },
       { h: 'Refunds for cancelled orders' },
@@ -183,13 +181,13 @@ const PAGES: Record<string, InfoPage> = {
       { h: 'What payment methods do you accept?' },
       { p: 'Cash on Delivery is available across India today. Online card / UPI / net-banking payments are coming shortly.' },
       { h: 'Can I change or cancel my order?' },
-      { p: `If your order has not been dispatched yet, email ${EMAIL} or message ${PHONE} and we will update or cancel it. See our Cancellation Policy for details.` },
+      { p: `If your order has not been dispatched yet, email ${EMAIL} and we will update or cancel it. See our Cancellation Policy for details.` },
       { h: 'How do returns and refunds work?' },
       { p: `You have ${SITE.returnWindowDays} days from delivery to request a return of unworn items with tags. See our Return & Refund Policy.` },
       { h: 'Do you ship outside India?' },
       { p: 'Not yet — India only for now.' },
       { h: 'How do I reach a human?' },
-      { p: `Email ${EMAIL} or WhatsApp ${PHONE}, ${SITE.supportHours}.` },
+      { p: `Email ${EMAIL}, ${SITE.supportHours}.` },
     ],
   },
 
@@ -254,7 +252,7 @@ const PAGES: Record<string, InfoPage> = {
       { h: 'Governing law' },
       { p: `These terms are governed by the laws of India. Any dispute is subject to the exclusive jurisdiction of the courts at ${SITE.address.city}, ${SITE.address.state}.` },
       { h: 'Contact' },
-      { p: `${SITE.name}, ${SITE.addressInline}. Email: ${EMAIL}. Phone / WhatsApp: ${PHONE}.` },
+      { p: `${SITE.name}, ${SITE.addressInline}. Email: ${EMAIL}.` },
     ],
   },
 };
@@ -323,8 +321,6 @@ export default async function InfoPageRoute({ params }: PageProps) {
         <p className="mt-1">{SITE.addressInline}</p>
         <p className="mt-1">
           <a href={`mailto:${SITE.email}`} className="link-underline">{SITE.email}</a>
-          {' · '}
-          <a href={SITE.whatsappUrl} className="link-underline">WhatsApp {SITE.phoneDisplay}</a>
         </p>
       </div>
     </div>

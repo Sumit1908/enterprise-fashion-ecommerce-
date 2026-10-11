@@ -139,6 +139,8 @@ export class AuthController {
   }
 
   @Public()
+  // Password guessing guard (admin + customer email login), per client IP.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   async login(
     @Body() dto: LoginDto,

@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { loadEnv } from '@slay/config';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { CommonModule } from './common/common.module.js';
+import { ClientIpThrottlerGuard } from './common/client-ip-throttler.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { StorefrontModule } from './storefront/storefront.module.js';
@@ -52,6 +53,6 @@ const env = loadEnv();
     WishlistModule,
     ShippingModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: ClientIpThrottlerGuard }],
 })
 export class AppModule {}

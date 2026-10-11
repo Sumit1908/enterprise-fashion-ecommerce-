@@ -12,11 +12,8 @@ export const SITE = {
   description:
     'Premium denim and fashion for Men, Women and Kids. New washes, considered fits, limited runs.',
 
+  // Email is the only public contact channel; no phone number is published.
   email: 'velorhouse@gmail.com',
-  // Display + tel/wa link forms of the same number.
-  phoneDisplay: '+91 93367 91807',
-  phoneE164: '+919336791807',
-  whatsappUrl: 'https://wa.me/919336791807',
 
   supportHours: 'Monday to Saturday, 10:00 AM – 7:00 PM IST',
 

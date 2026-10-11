@@ -31,7 +31,7 @@ export class RegisterDto {
   @MaxLength(60)
   lastName?: string;
 
-  @ApiProperty({ required: false, example: '+919000000000' })
+  @ApiProperty({ required: false, example: '+91XXXXXXXXXX' })
   @IsOptional()
   @Matches(/^\+?[0-9]{8,15}$/)
   phone?: string;
@@ -57,7 +57,7 @@ export class RefreshDto {
 
 /** Step 1 of mobile-number customer auth — send a one-time code. */
 export class RequestOtpDto {
-  @ApiProperty({ example: '+919000000000' })
+  @ApiProperty({ example: '+91XXXXXXXXXX' })
   @IsString()
   @MaxLength(20)
   phone!: string;
@@ -65,7 +65,7 @@ export class RequestOtpDto {
 
 /** Step 2 — verify the code; creates or signs in the customer. */
 export class VerifyOtpDto {
-  @ApiProperty({ example: '+919000000000' })
+  @ApiProperty({ example: '+91XXXXXXXXXX' })
   @IsString()
   @MaxLength(20)
   phone!: string;
@@ -93,7 +93,7 @@ export class VerifyWidgetOtpDto {
   @MaxLength(8192)
   accessToken!: string;
 
-  @ApiProperty({ example: '+919000000000', description: 'the number the shopper entered' })
+  @ApiProperty({ example: '+91XXXXXXXXXX', description: 'the number the shopper entered' })
   @IsString()
   @MaxLength(20)
   phone!: string;

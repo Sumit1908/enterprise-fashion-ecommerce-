@@ -28,7 +28,7 @@ function cleanMobile(raw: string): string {
   return raw.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10);
 }
 
-/** +91 98765 43210 */
+/** Formats as +91 XXXXX XXXXX */
 function prettyPhone(tenDigits: string): string {
   const d = tenDigits.replace(/\D/g, '').slice(-10);
   if (d.length !== 10) return `+91 ${tenDigits}`;
@@ -305,7 +305,7 @@ function AccountInner() {
               autoComplete="tel-national"
               autoFocus
               aria-label="Mobile number"
-              placeholder="98765 43210"
+              placeholder="10-digit mobile number"
               value={mobile.replace(/(\d{5})(\d+)/, '$1 $2')}
               onChange={(e) => setMobile(cleanMobile(e.target.value))}
               className="w-full bg-transparent px-4 py-3.5 text-base tracking-[0.06em] outline-none placeholder:text-[var(--color-ink-mute)]"

@@ -313,8 +313,6 @@ async function seedSettings() {
     ['general', 'store.name', 'Velor House', 'Store name'],
     ['general', 'store.tagline', 'Denim, redefined.', 'Tagline'],
     ['general', 'store.supportEmail', 'velorhouse@gmail.com', 'Support email'],
-    ['general', 'store.supportPhone', '+91 93367 91807', 'Support phone / WhatsApp'],
-    ['general', 'store.whatsapp', '+919336791807', 'WhatsApp number (E.164)'],
     ['general', 'store.addressLine1', 'Lalganj Ajhara', 'Business address line 1'],
     ['general', 'store.city', 'Pratapgarh', 'City'],
     ['general', 'store.state', 'Uttar Pradesh', 'State'],
